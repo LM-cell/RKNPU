@@ -1,0 +1,21 @@
+[package]
+edition = "2024"
+name = "rk3588-clk"
+version = "0.1.0"
+
+[dependencies]
+log = "0.4"
+mbarrier = "0.1"
+tock-registers = "0.10.0"
+
+[dev-dependencies]
+bare-test = "0.7"
+sdmmc = { git = "https://github.com/YanQD/sdmmc.git" }
+rockchip-pm = { git = "https://github.com/drivercraft/rockchip-pm.git" }
+
+[build-dependencies]
+bare-test-macros = "0.2"
+
+[[test]]
+harness = false
+name = "test"

@@ -1,0 +1,93 @@
+use core::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, Once};
+
+use crate::{api as axtask, current};
+
+static INIT: Once = Once::new();
+
+static SERIAL: Mutex<()> = Mutex::new(());
+
+#[test]
+fn test_sched_fifo() {
+    let _lock = SERIAL.lock();
+    INIT.call_once(axtask::init_scheduler);
+
+    const NUM_TASKS: usize = 10;
+    static FINISHED_TASKS: AtomicUsize = AtomicUsize::new(0);
+
+    for i in 0..NUM_TASKS {
+        axtask::spawn_raw(
+            move || {
+                println!("sched-fifo: Hello, task {}! ({})", i, current().id_name());
+                axtask::yield_now();
+                let order = FINISHED_TASKS.fetch_add(1, Ordering::Release);
+                assert_eq!(order, i); // FIFO scheduler
+            },
+            format!("T{i}"),
+            0x1000,
+        );
+    }
+
+    while FINISHED_TASKS.load(Ordering::Acquire) < NUM_TASKS {
+        axtask::yield_now();
+    }
+}
+
+#[test]
+fn test_fp_state_switch() {
+    let _lock = SERIAL.lock();
+    INIT.call_once(axtask::init_scheduler);
+
+    const NUM_TASKS: usize = 5;
+    const FLOATS: [f64; NUM_TASKS] = [
+        core::f64::consts::PI,
+        core::f64::consts::E,
+        -core::f64::consts::SQRT_2,
+        0.0,
+        0.618033988749895,
+    ];
+    static FINISHED_TASKS: AtomicUsize = AtomicUsize::new(0);
+
+    for (i, float) in FLOATS.iter().enumerate() {
+        axtask::spawn(
+            move || {
+                let mut value = float + i as f64;
+                axtask::yield_now();
+                value -= i as f64;
+
+                println!("fp_state_switch: Float {i} = {value}");
+                assert!((value - float).abs() < 1e-9);
+                FINISHED_TASKS.fetch_add(1, Ordering::Release);
+            },
+            "".into(),
+        );
+    }
+    while FINISHED_TASKS.load(Ordering::Acquire) < NUM_TASKS {
+        axtask::yield_now();
+    }
+}
+
+#[test]
+fn test_task_join() {
+    let _lock = SERIAL.lock();
+    INIT.call_once(axtask::init_scheduler);
+
+    const NUM_TASKS: usize = 10;
+    let mut tasks = Vec::with_capacity(NUM_TASKS);
+
+    for i in 0..NUM_TASKS {
+        tasks.push(axtask::spawn_raw(
+            move || {
+                println!("task_join: task {}! ({})", i, current().id_name());
+                axtask::yield_now();
+                axtask::exit(i as _);
+            },
+            format!("T{i}"),
+            0x1000,
+        ));
+    }
+
+    for (i, task) in tasks.into_iter().enumerate() {
+        assert_eq!(task.join(), i as _);
+    }
+}

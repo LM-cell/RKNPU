@@ -1,0 +1,147 @@
+{
+  "$defs": {
+    "BuildSystem": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "Custom": {
+              "$ref": "#/$defs/Custom"
+            }
+          },
+          "required": [
+            "Custom"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "Cargo": {
+              "$ref": "#/$defs/Cargo"
+            }
+          },
+          "required": [
+            "Cargo"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Cargo": {
+      "properties": {
+        "args": {
+          "description": "other cargo args",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extra_config": {
+          "description": "extra cargo .config.toml file\ncan be url or local path",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "features": {
+          "description": "features to enable",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "log": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LogLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "log level feature"
+        },
+        "package": {
+          "description": "package name",
+          "type": "string"
+        },
+        "post_build_cmds": {
+          "description": "shell commands after build\n`KERNEL_ELF` env var is set to the built ELF path",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pre_build_cmds": {
+          "description": "shell commands before build",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "target": {
+          "description": "target triple",
+          "type": "string"
+        },
+        "to_bin": {
+          "description": "whether to output as binary",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "package",
+        "features",
+        "args",
+        "pre_build_cmds",
+        "post_build_cmds",
+        "to_bin"
+      ],
+      "type": "object"
+    },
+    "Custom": {
+      "properties": {
+        "build_cmd": {
+          "description": "shell command to build the kernel",
+          "type": "string"
+        },
+        "elf_path": {
+          "description": "path to the built ELF file",
+          "type": "string"
+        },
+        "to_bin": {
+          "description": "whether to output as binary",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "build_cmd",
+        "elf_path",
+        "to_bin"
+      ],
+      "type": "object"
+    },
+    "LogLevel": {
+      "enum": [
+        "Trace",
+        "Debug",
+        "Info",
+        "Warn",
+        "Error"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "system": {
+      "$ref": "#/$defs/BuildSystem"
+    }
+  },
+  "required": [
+    "system"
+  ],
+  "title": "BuildConfig",
+  "type": "object"
+}

@@ -1,0 +1,8 @@
+serial = "/dev/ttyUSB0"
+baud_rate = "1500000"
+dtb_file = "orangepi5plus.dtb"
+success_regex = []
+fail_regex = []
+
+[net]
+interface = "enp3s0"

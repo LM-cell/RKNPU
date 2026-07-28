@@ -1,0 +1,25 @@
+[package]
+name = "axsync"
+version.workspace = true
+edition.workspace = true
+authors = ["Yuekai Jia <equation618@gmail.com>"]
+description = "ArceOS synchronization primitives"
+license.workspace = true
+homepage.workspace = true
+repository = "https://github.com/arceos-org/arceos/tree/main/modules/axsync"
+documentation = "https://arceos-org.github.io/arceos/axsync/index.html"
+
+[features]
+multitask = ["axtask/multitask"]
+default = []
+
+[dependencies]
+axtask = { workspace = true }
+event-listener = { version = "5.4.0", default-features = false }
+kspin = { workspace = true }
+lock_api = { version = "0.4", default-features = false }
+
+[dev-dependencies]
+axsync = { workspace = true, features = ["multitask"] }
+axtask = { workspace = true, features = ["test"] }
+rand = { workspace = true }

@@ -1,0 +1,593 @@
+starry:~#
+starry:~# cd /demo
+starry:/demo# cd /test
+starry:/test# ./core_scaling_benchmark
+drm name is rknpu - 20240828 - RKNPU driver
+core scaling benchmark
+  measured window : blocking DRM_IOCTL_RKNPU_SUBMIT only
+  setup timing    : operand packing and regcmd generation are reported separately
+  comparison      : 1 core vs 3 cores on identical task batches
+
+================================================================================
+scenario: tiny_dispatch
+  description : Small matrices where submit/scheduler overhead dominates and core-scaling efficiency is usually lower than the ideal 3x.
+  dimensions  : M=4 K=32 N=16
+================================================================================
+
+[shared-operands] task_count=96 warmup=2 measured=12
+  All tasks reuse one input/weight pair; output slices stay private.
+[260.464282 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=1, size=0x15000, dma_addr=0x137d3000, active_buffers=1, active_bytes=0x15000
+[260.465442 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=2, size=0xf00, dma_addr=0x136a3000, active_buffers=2, active_bytes=0x15f00
+[260.466557 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=3, size=0x100, dma_addr=0x13671000, active_buffers=3, active_bytes=0x16000
+[260.467673 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=4, size=0x400, dma_addr=0x137e9000, active_buffers=4, active_bytes=0x16400
+[260.468873 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=5, size=0x6000, dma_addr=0x137ea000, active_buffers=5, active_bytes=0x1c400
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/12
+  core=1 measure round 2/12
+  core=1 measure round 3/12
+  core=1 measure round 4/12
+  core=1 measure round 5/12
+  core=1 measure round 6/12
+  core=1 measure round 7/12
+  core=1 measure round 8/12
+  core=1 measure round 9/12
+  core=1 measure round 10/12
+  core=1 measure round 11/12
+  core=1 measure round 12/12
+[260.514108 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=1, removed=true, active_buffers=4, active_bytes=0x7400
+[260.515084 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=2, removed=true, active_buffers=3, active_bytes=0x6500
+[260.516057 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=3, removed=true, active_buffers=2, active_bytes=0x6400
+[260.517031 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=4, removed=true, active_buffers=1, active_bytes=0x6000
+[260.518009 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=5, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :     0.25 KiB
+  per-task weight :     1.00 KiB
+  per-task output :     0.25 KiB
+  total DMA bytes :     0.11 MiB
+  setup operands  :    0.104 ms
+  build regcmds   :    1.469 ms
+  avg submit      :    2.533 ms
+  min / max       :    2.529 /    2.537 ms
+  avg task        :   26.381 us
+  tasks / sec     : 37905.96
+  GMAC / sec      :    0.078
+  GFLOP / sec     :    0.155
+  jitter span     :     0.32 %
+[260.539693 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=6, size=0x15000, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x15000
+[260.540848 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=7, size=0xf00, dma_addr=0x136f7000, active_buffers=2, active_bytes=0x15f00
+[260.541963 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=8, size=0x100, dma_addr=0x136db000, active_buffers=3, active_bytes=0x16000
+[260.543078 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=9, size=0x400, dma_addr=0x136a3000, active_buffers=4, active_bytes=0x16400
+[260.544255 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=10, size=0x6000, dma_addr=0x13853000, active_buffers=5, active_bytes=0x1c400
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/12
+  core=3 measure round 2/12
+  core=3 measure round 3/12
+  core=3 measure round 4/12
+  core=3 measure round 5/12
+  core=3 measure round 6/12
+  core=3 measure round 7/12
+  core=3 measure round 8/12
+  core=3 measure round 9/12
+  core=3 measure round 10/12
+  core=3 measure round 11/12
+  core=3 measure round 12/12
+[260.568910 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=6, removed=true, active_buffers=4, active_bytes=0x7400
+[260.569885 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=7, removed=true, active_buffers=3, active_bytes=0x6500
+[260.570858 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=8, removed=true, active_buffers=2, active_bytes=0x6400
+[260.571832 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=9, removed=true, active_buffers=1, active_bytes=0x6000
+[260.572810 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=10, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :     0.25 KiB
+  per-task weight :     1.00 KiB
+  per-task output :     0.25 KiB
+  total DMA bytes :     0.11 MiB
+  setup operands  :    0.103 ms
+  build regcmds   :    0.274 ms
+  avg submit      :    1.423 ms
+  min / max       :    1.415 /    1.453 ms
+  avg task        :   14.823 us
+  tasks / sec     : 67463.11
+  GMAC / sec      :    0.138
+  GFLOP / sec     :    0.276
+  jitter span     :     2.67 %
+comparison summary
+  1-core avg submit :    2.533 ms
+  3-core avg submit :    1.423 ms
+  speedup           :    1.780 x
+  parallel eff.     :    59.32 % of ideal 3x
+  throughput gain   :    1.780 x tasks/sec
+  GMAC gain         :    1.780 x
+  mode complete   : shared-operands
+
+[unique-operands] task_count=96 warmup=2 measured=12
+  Each task owns a private input/weight/output slice.
+[260.580167 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=11, size=0x15000, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x15000
+[260.581326 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=12, size=0xf00, dma_addr=0x136f7000, active_buffers=2, active_bytes=0x15f00
+[260.582511 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=13, size=0x6000, dma_addr=0x13853000, active_buffers=3, active_bytes=0x1bf00
+[260.583895 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=14, size=0x18000, dma_addr=0x1385a000, active_buffers=4, active_bytes=0x33f00
+[260.585115 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=15, size=0x6000, dma_addr=0x13873000, active_buffers=5, active_bytes=0x39f00
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/12
+  core=1 measure round 2/12
+  core=1 measure round 3/12
+  core=1 measure round 4/12
+  core=1 measure round 5/12
+  core=1 measure round 6/12
+  core=1 measure round 7/12
+  core=1 measure round 8/12
+  core=1 measure round 9/12
+  core=1 measure round 10/12
+  core=1 measure round 11/12
+  core=1 measure round 12/12
+[260.647989 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=11, removed=true, active_buffers=4, active_bytes=0x24f00
+[260.648999 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=12, removed=true, active_buffers=3, active_bytes=0x24000
+[260.649991 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=13, removed=true, active_buffers=2, active_bytes=0x1e000
+[260.650986 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=14, removed=true, active_buffers=1, active_bytes=0x6000
+[260.651969 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=15, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :     0.25 KiB
+  per-task weight :     1.00 KiB
+  per-task output :     0.25 KiB
+  total DMA bytes :     0.23 MiB
+  setup operands  :    9.328 ms
+  build regcmds   :    0.271 ms
+  avg submit      :    3.478 ms
+  min / max       :    3.462 /    3.507 ms
+  avg task        :   36.227 us
+  tasks / sec     : 27603.39
+  GMAC / sec      :    0.057
+  GFLOP / sec     :    0.113
+  jitter span     :     1.29 %
+[260.656430 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=16, size=0x15000, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x15000
+[260.657588 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=17, size=0xf00, dma_addr=0x136f7000, active_buffers=2, active_bytes=0x15f00
+[260.658795 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=18, size=0x6000, dma_addr=0x13853000, active_buffers=3, active_bytes=0x1bf00
+[260.660179 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=19, size=0x18000, dma_addr=0x1385a000, active_buffers=4, active_bytes=0x33f00
+[260.661387 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=20, size=0x6000, dma_addr=0x13873000, active_buffers=5, active_bytes=0x39f00
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/12
+  core=3 measure round 2/12
+  core=3 measure round 3/12
+  core=3 measure round 4/12
+  core=3 measure round 5/12
+  core=3 measure round 6/12
+  core=3 measure round 7/12
+  core=3 measure round 8/12
+  core=3 measure round 9/12
+  core=3 measure round 10/12
+  core=3 measure round 11/12
+  core=3 measure round 12/12
+[260.699729 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=16, removed=true, active_buffers=4, active_bytes=0x24f00
+[260.700720 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=17, removed=true, active_buffers=3, active_bytes=0x24000
+[260.701711 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=18, removed=true, active_buffers=2, active_bytes=0x1e000
+[260.702707 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=19, removed=true, active_buffers=1, active_bytes=0x6000
+[260.703689 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=20, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :     0.25 KiB
+  per-task weight :     1.00 KiB
+  per-task output :     0.25 KiB
+  total DMA bytes :     0.23 MiB
+  setup operands  :    9.327 ms
+  build regcmds   :    0.271 ms
+  avg submit      :    1.739 ms
+  min / max       :    1.734 /    1.767 ms
+  avg task        :   18.114 us
+  tasks / sec     : 55206.79
+  GMAC / sec      :    0.113
+  GFLOP / sec     :    0.226
+  jitter span     :     1.90 %
+comparison summary
+  1-core avg submit :    3.478 ms
+  3-core avg submit :    1.739 ms
+  speedup           :    2.000 x
+  parallel eff.     :    66.67 % of ideal 3x
+  throughput gain   :    2.000 x tasks/sec
+  GMAC gain         :    2.000 x
+  mode complete   : unique-operands
+
+================================================================================
+scenario: mid_balanced
+  description : Balanced mid-size matrices where both driver overhead and arithmetic throughput contribute to the final timing.
+  dimensions  : M=64 K=512 N=512
+================================================================================
+
+[shared-operands] task_count=48 warmup=2 measured=8
+  All tasks reuse one input/weight pair; output slices stay private.
+[260.713650 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=21, size=0xa800, dma_addr=0x1383d000, active_buffers=1, active_bytes=0xa800
+[260.714787 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=22, size=0x780, dma_addr=0x136db000, active_buffers=2, active_bytes=0xaf80
+[260.716071 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=23, size=0x10000, dma_addr=0x13848000, active_buffers=3, active_bytes=0x1af80
+[260.718570 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=24, size=0x80000, dma_addr=0x13859000, active_buffers=4, active_bytes=0x9af80
+[260.735753 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=25, size=0x600000, dma_addr=0x138da000, active_buffers=5, active_bytes=0x69af80
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/8
+  core=1 measure round 2/8
+  core=1 measure round 3/8
+  core=1 measure round 4/8
+  core=1 measure round 5/8
+  core=1 measure round 6/8
+  core=1 measure round 7/8
+  core=1 measure round 8/8
+[261.116834 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=21, removed=true, active_buffers=4, active_bytes=0x690780
+[261.117832 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=22, removed=true, active_buffers=3, active_bytes=0x690000
+[261.118854 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=23, removed=true, active_buffers=2, active_bytes=0x680000
+[261.119884 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=24, removed=true, active_buffers=1, active_bytes=0x600000
+[261.121260 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=25, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :    64.00 KiB
+  per-task weight :   512.00 KiB
+  per-task output :   128.00 KiB
+  total DMA bytes :     6.61 MiB
+  setup operands  :   44.792 ms
+  build regcmds   :    0.138 ms
+  avg submit      :   32.496 ms
+  min / max       :   32.472 /   32.519 ms
+  avg task        :  677.000 us
+  tasks / sec     :  1477.10
+  GMAC / sec      :   24.782
+  GFLOP / sec     :   49.563
+  jitter span     :     0.14 %
+[261.125613 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=26, size=0xa800, dma_addr=0x1383d000, active_buffers=1, active_bytes=0xa800
+[261.126751 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=27, size=0x780, dma_addr=0x136db000, active_buffers=2, active_bytes=0xaf80
+[261.128033 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=28, size=0x10000, dma_addr=0x13848000, active_buffers=3, active_bytes=0x1af80
+[261.130530 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=29, size=0x80000, dma_addr=0x13859000, active_buffers=4, active_bytes=0x9af80
+[261.147712 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=30, size=0x600000, dma_addr=0x13edd000, active_buffers=5, active_bytes=0x69af80
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/8
+  core=3 measure round 2/8
+  core=3 measure round 3/8
+  core=3 measure round 4/8
+  core=3 measure round 5/8
+  core=3 measure round 6/8
+  core=3 measure round 7/8
+  core=3 measure round 8/8
+[261.391225 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=26, removed=true, active_buffers=4, active_bytes=0x690780
+[261.392222 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=27, removed=true, active_buffers=3, active_bytes=0x690000
+[261.393225 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=28, removed=true, active_buffers=2, active_bytes=0x680000
+[261.394254 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=29, removed=true, active_buffers=1, active_bytes=0x600000
+[261.395628 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=30, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :    64.00 KiB
+  per-task weight :   512.00 KiB
+  per-task output :   128.00 KiB
+  total DMA bytes :     6.61 MiB
+  setup operands  :   44.775 ms
+  build regcmds   :    0.138 ms
+  avg submit      :   18.746 ms
+  min / max       :   18.743 /   18.749 ms
+  avg task        :  390.542 us
+  tasks / sec     :  2560.55
+  GMAC / sec      :   42.959
+  GFLOP / sec     :   85.918
+  jitter span     :     0.03 %
+comparison summary
+  1-core avg submit :   32.496 ms
+  3-core avg submit :   18.746 ms
+  speedup           :    1.733 x
+  parallel eff.     :    57.78 % of ideal 3x
+  throughput gain   :    1.733 x tasks/sec
+  GMAC gain         :    1.733 x
+  mode complete   : shared-operands
+
+[unique-operands] task_count=12 warmup=2 measured=8
+  Each task owns a private input/weight/output slice.
+[261.402797 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=31, size=0x2a00, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x2a00
+[261.403929 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=32, size=0x1e0, dma_addr=0x136db000, active_buffers=2, active_bytes=0x2be0
+[261.407040 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=33, size=0xc0000, dma_addr=0x13840000, active_buffers=3, active_bytes=0xc2be0
+[261.424228 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=34, size=0x600000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x6c2be0
+[261.429770 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=35, size=0x180000, dma_addr=0x13901000, active_buffers=5, active_bytes=0x842be0
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/8
+  core=1 measure round 2/8
+  core=1 measure round 3/8
+  core=1 measure round 4/8
+  core=1 measure round 5/8
+  core=1 measure round 6/8
+  core=1 measure round 7/8
+  core=1 measure round 8/8
+[262.069730 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=31, removed=true, active_buffers=4, active_bytes=0x8401e0
+[262.070727 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=32, removed=true, active_buffers=3, active_bytes=0x840000
+[262.071773 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=33, removed=true, active_buffers=2, active_bytes=0x780000
+[262.073149 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=34, removed=true, active_buffers=1, active_bytes=0x180000
+[262.074241 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=35, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :    64.00 KiB
+  per-task weight :   512.00 KiB
+  per-task output :   128.00 KiB
+  total DMA bytes :     8.26 MiB
+  setup operands  :  529.524 ms
+  build regcmds   :    0.039 ms
+  avg submit      :   10.459 ms
+  min / max       :   10.436 /   10.464 ms
+  avg task        :  871.542 us
+  tasks / sec     :  1147.39
+  GMAC / sec      :   19.250
+  GFLOP / sec     :   38.500
+  jitter span     :     0.27 %
+[262.078528 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=36, size=0x2a00, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x2a00
+[262.079659 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=37, size=0x1e0, dma_addr=0x136db000, active_buffers=2, active_bytes=0x2be0
+[262.082768 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=38, size=0xc0000, dma_addr=0x13840000, active_buffers=3, active_bytes=0xc2be0
+[262.099959 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=39, size=0x600000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x6c2be0
+[262.105481 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=40, size=0x180000, dma_addr=0x13a84000, active_buffers=5, active_bytes=0x842be0
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/8
+  core=3 measure round 2/8
+  core=3 measure round 3/8
+  core=3 measure round 4/8
+  core=3 measure round 5/8
+  core=3 measure round 6/8
+  core=3 measure round 7/8
+  core=3 measure round 8/8
+[262.701673 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=36, removed=true, active_buffers=4, active_bytes=0x8401e0
+[262.702673 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=37, removed=true, active_buffers=3, active_bytes=0x840000
+[262.703719 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=38, removed=true, active_buffers=2, active_bytes=0x780000
+[262.705095 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=39, removed=true, active_buffers=1, active_bytes=0x180000
+[262.706187 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=40, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :    64.00 KiB
+  per-task weight :   512.00 KiB
+  per-task output :   128.00 KiB
+  total DMA bytes :     8.26 MiB
+  setup operands  :  529.528 ms
+  build regcmds   :    0.045 ms
+  avg submit      :    6.065 ms
+  min / max       :    6.045 /    6.078 ms
+  avg task        :  505.427 us
+  tasks / sec     :  1978.52
+  GMAC / sec      :   33.194
+  GFLOP / sec     :   66.388
+  jitter span     :     0.54 %
+comparison summary
+  1-core avg submit :   10.459 ms
+  3-core avg submit :    6.065 ms
+  speedup           :    1.724 x
+  parallel eff.     :    57.48 % of ideal 3x
+  throughput gain   :    1.724 x tasks/sec
+  GMAC gain         :    1.724 x
+  mode complete   : unique-operands
+
+================================================================================
+scenario: throughput_heavy
+  description : Large matrices intended to shift the bottleneck toward math throughput. Unique mode uses fewer tasks to keep DMA footprint bounded.
+  dimensions  : M=128 K=1024 N=1024
+================================================================================
+
+[shared-operands] task_count=24 warmup=2 measured=5
+  All tasks reuse one input/weight pair; output slices stay private.
+[262.716306 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=41, size=0x5400, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x5400
+[262.717449 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=42, size=0x3c0, dma_addr=0x136db000, active_buffers=2, active_bytes=0x57c0
+[262.719252 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=43, size=0x40000, dma_addr=0x13843000, active_buffers=3, active_bytes=0x457c0
+[262.725729 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=44, size=0x200000, dma_addr=0x13a84000, active_buffers=4, active_bytes=0x2457c0
+[262.759041 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=45, size=0xc00000, dma_addr=0x13edd000, active_buffers=5, active_bytes=0xe457c0
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/5
+  core=1 measure round 2/5
+  core=1 measure round 3/5
+  core=1 measure round 4/5
+  core=1 measure round 5/5
+[263.249912 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=41, removed=true, active_buffers=4, active_bytes=0xe403c0
+[263.250910 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=42, removed=true, active_buffers=3, active_bytes=0xe40000
+[263.251925 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=43, removed=true, active_buffers=2, active_bytes=0xe00000
+[263.253048 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=44, removed=true, active_buffers=1, active_bytes=0xc00000
+[263.254800 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=45, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :   256.00 KiB
+  per-task weight :  2048.00 KiB
+  per-task output :   512.00 KiB
+  total DMA bytes :    14.27 MiB
+  setup operands  :  177.938 ms
+  build regcmds   :    0.072 ms
+  avg submit      :   42.656 ms
+  min / max       :   42.622 /   42.706 ms
+  avg task        : 1777.333 us
+  tasks / sec     :   562.64
+  GMAC / sec      :   75.516
+  GFLOP / sec     :  151.033
+  jitter span     :     0.20 %
+[263.259128 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=46, size=0x5400, dma_addr=0x1383d000, active_buffers=1, active_bytes=0x5400
+[263.260263 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=47, size=0x3c0, dma_addr=0x136db000, active_buffers=2, active_bytes=0x57c0
+[263.262045 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=48, size=0x40000, dma_addr=0x1388a000, active_buffers=3, active_bytes=0x457c0
+[263.268546 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=49, size=0x200000, dma_addr=0x13a84000, active_buffers=4, active_bytes=0x2457c0
+[263.301817 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=50, size=0xc00000, dma_addr=0x13edd000, active_buffers=5, active_bytes=0xe457c0
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/5
+  core=3 measure round 2/5
+  core=3 measure round 3/5
+  core=3 measure round 4/5
+  core=3 measure round 5/5
+[263.640185 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=46, removed=true, active_buffers=4, active_bytes=0xe403c0
+[263.641182 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=47, removed=true, active_buffers=3, active_bytes=0xe40000
+[263.642197 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=48, removed=true, active_buffers=2, active_bytes=0xe00000
+[263.643319 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=49, removed=true, active_buffers=1, active_bytes=0xc00000
+[263.645072 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=50, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :   256.00 KiB
+  per-task weight :  2048.00 KiB
+  per-task output :   512.00 KiB
+  total DMA bytes :    14.27 MiB
+  setup operands  :  177.936 ms
+  build regcmds   :    0.071 ms
+  avg submit      :   20.864 ms
+  min / max       :   20.853 /   20.876 ms
+  avg task        :  869.325 us
+  tasks / sec     :  1150.32
+  GMAC / sec      :  154.393
+  GFLOP / sec     :  308.786
+  jitter span     :     0.11 %
+comparison summary
+  1-core avg submit :   42.656 ms
+  3-core avg submit :   20.864 ms
+  speedup           :    2.044 x
+  parallel eff.     :    68.15 % of ideal 3x
+  throughput gain   :    2.044 x tasks/sec
+  GMAC gain         :    2.044 x
+  mode complete   : shared-operands
+
+[unique-operands] task_count=4 warmup=2 measured=5
+  Each task owns a private input/weight/output slice.
+[263.652212 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=51, size=0xe00, dma_addr=0x136a3000, active_buffers=1, active_bytes=0xe00
+[263.653326 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=52, size=0xa0, dma_addr=0x136db000, active_buffers=2, active_bytes=0xea0
+[263.657088 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=53, size=0x100000, dma_addr=0x1388a000, active_buffers=3, active_bytes=0x100ea0
+[263.679651 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=54, size=0x800000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x900ea0
+[263.686624 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=55, size=0x200000, dma_addr=0x13a84000, active_buffers=5, active_bytes=0xb00ea0
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/5
+  core=1 measure round 2/5
+  core=1 measure round 3/5
+  core=1 measure round 4/5
+  core=1 measure round 5/5
+[264.446706 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=51, removed=true, active_buffers=4, active_bytes=0xb000a0
+[264.447704 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=52, removed=true, active_buffers=3, active_bytes=0xb00000
+[264.448786 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=53, removed=true, active_buffers=2, active_bytes=0xa00000
+[264.450287 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=54, removed=true, active_buffers=1, active_bytes=0x200000
+[264.451415 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=55, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :   256.00 KiB
+  per-task weight :  2048.00 KiB
+  per-task output :   512.00 KiB
+  total DMA bytes :    11.00 MiB
+  setup operands  :  706.638 ms
+  build regcmds   :    0.016 ms
+  avg submit      :    6.781 ms
+  min / max       :    6.755 /    6.801 ms
+  avg task        : 1695.150 us
+  tasks / sec     :   589.92
+  GMAC / sec      :   79.177
+  GFLOP / sec     :  158.355
+  jitter span     :     0.68 %
+[264.455668 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=56, size=0xe00, dma_addr=0x136a3000, active_buffers=1, active_bytes=0xe00
+[264.456780 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=57, size=0xa0, dma_addr=0x136db000, active_buffers=2, active_bytes=0xea0
+[264.460562 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=58, size=0x100000, dma_addr=0x1388a000, active_buffers=3, active_bytes=0x100ea0
+[264.483106 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=59, size=0x800000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x900ea0
+[264.490100 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=60, size=0x200000, dma_addr=0x13a84000, active_buffers=5, active_bytes=0xb00ea0
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/5
+  core=3 measure round 2/5
+  core=3 measure round 3/5
+  core=3 measure round 4/5
+  core=3 measure round 5/5
+[265.230299 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=56, removed=true, active_buffers=4, active_bytes=0xb000a0
+[265.231297 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=57, removed=true, active_buffers=3, active_bytes=0xb00000
+[265.232360 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=58, removed=true, active_buffers=2, active_bytes=0xa00000
+[265.233865 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=59, removed=true, active_buffers=1, active_bytes=0x200000
+[265.234988 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=60, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :   256.00 KiB
+  per-task weight :  2048.00 KiB
+  per-task output :   512.00 KiB
+  total DMA bytes :    11.00 MiB
+  setup operands  :  706.625 ms
+  build regcmds   :    0.022 ms
+  avg submit      :    3.939 ms
+  min / max       :    3.922 /    3.950 ms
+  avg task        :  984.800 us
+  tasks / sec     :  1015.43
+  GMAC / sec      :  136.289
+  GFLOP / sec     :  272.579
+  jitter span     :     0.71 %
+comparison summary
+  1-core avg submit :    6.781 ms
+  3-core avg submit :    3.939 ms
+  speedup           :    1.721 x
+  parallel eff.     :    57.38 % of ideal 3x
+  throughput gain   :    1.721 x tasks/sec
+  GMAC gain         :    1.721 x
+  mode complete   : unique-operands
+
+================================================================================
+scenario: llama_decode_like
+  description : Low-M, high-K, high-N projection shape similar to decode-time LLM linear layers. This highlights latency sensitivity more than raw throughput.
+  dimensions  : M=1 K=4096 N=4096
+================================================================================
+
+[shared-operands] task_count=48 warmup=2 measured=8
+  All tasks reuse one input/weight pair; output slices stay private.
+[265.245236 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=61, size=0xa800, dma_addr=0x1383d000, active_buffers=1, active_bytes=0xa800
+[265.246382 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=62, size=0x780, dma_addr=0x136db000, active_buffers=2, active_bytes=0xaf80
+[265.247517 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=63, size=0x2000, dma_addr=0x13848000, active_buffers=3, active_bytes=0xcf80
+[265.334070 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=64, size=0x2000000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x200cf80
+[265.339332 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=65, size=0xc0000, dma_addr=0x1388a000, active_buffers=5, active_bytes=0x20ccf80
+  core=1 warmup round 1/2
+  core=1 warmup round 2/2
+  core=1 measure round 1/8
+  core=1 measure round 2/8
+  core=1 measure round 3/8
+  core=1 measure round 4/8
+  core=1 measure round 5/8
+  core=1 measure round 6/8
+  core=1 measure round 7/8
+  core=1 measure round 8/8
+[271.270542 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=61, removed=true, active_buffers=4, active_bytes=0x20c2780
+[271.271549 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=62, removed=true, active_buffers=3, active_bytes=0x20c2000
+[271.272552 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=63, removed=true, active_buffers=2, active_bytes=0x20c0000
+[271.275578 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=64, removed=true, active_buffers=1, active_bytes=0xc0000
+[271.276616 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=65, removed=true, active_buffers=0, active_bytes=0x0
+  1-core metrics
+  per-task input  :     8.00 KiB
+  per-task weight : 32768.00 KiB
+  per-task output :    16.00 KiB
+  total DMA bytes :    32.80 MiB
+  setup operands  : 2480.273 ms
+  build regcmds   :    0.145 ms
+  avg submit      :  344.354 ms
+  min / max       :  344.294 /  344.401 ms
+  avg task        : 7174.044 us
+  tasks / sec     :   139.39
+  GMAC / sec      :    2.339
+  GFLOP / sec     :    4.677
+  jitter span     :     0.03 %
+[271.281011 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=66, size=0xa800, dma_addr=0x1383d000, active_buffers=1, active_bytes=0xa800
+[271.282155 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=67, size=0x780, dma_addr=0x136db000, active_buffers=2, active_bytes=0xaf80
+[271.283291 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=68, size=0x2000, dma_addr=0x1385d000, active_buffers=3, active_bytes=0xcf80
+[271.369720 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=69, size=0x2000000, dma_addr=0x13edd000, active_buffers=4, active_bytes=0x200cf80
+[271.374884 0:8 rknpu::gem:93] [NPU] MEM_CREATE: handle=70, size=0xc0000, dma_addr=0x1388a000, active_buffers=5, active_bytes=0x20ccf80
+  core=3 warmup round 1/2
+  core=3 warmup round 2/2
+  core=3 measure round 1/8
+  core=3 measure round 2/8
+  core=3 measure round 3/8
+  core=3 measure round 4/8
+  core=3 measure round 5/8
+  core=3 measure round 6/8
+  core=3 measure round 7/8
+  core=3 measure round 8/8
+[275.210801 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=66, removed=true, active_buffers=4, active_bytes=0x20c2780
+[275.211809 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=67, removed=true, active_buffers=3, active_bytes=0x20c2000
+[275.212813 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=68, removed=true, active_buffers=2, active_bytes=0x20c0000
+[275.215847 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=69, removed=true, active_buffers=1, active_bytes=0xc0000
+[275.216885 0:8 rknpu::gem:151] [NPU] MEM_DESTROY: handle=70, removed=true, active_buffers=0, active_bytes=0x0
+  3-core metrics
+  per-task input  :     8.00 KiB
+  per-task weight : 32768.00 KiB
+  per-task output :    16.00 KiB
+  total DMA bytes :    32.80 MiB
+  setup operands  : 2480.328 ms
+  build regcmds   :    0.148 ms
+  avg submit      :  137.000 ms
+  min / max       :  126.027 /  139.504 ms
+  avg task        : 2854.156 us
+  tasks / sec     :   350.37
+  GMAC / sec      :    5.878
+  GFLOP / sec     :   11.756
+  jitter span     :     9.84 %
+comparison summary
+  1-core avg submit :  344.354 ms
+  3-core avg submit :  137.000 ms
+  speedup           :    2.514 x
+  parallel eff.     :    83.78 % of ideal 3x
+  throughput gain   :    2.514 x tasks/sec
+  GMAC gain         :    2.514 x
+  mode complete   : shared-operands
+skip mode=unique-operands because this scenario does not define a valid task batch
+
+benchmark complete status=0

@@ -1,0 +1,21 @@
+[package]
+edition = "2024"
+name = "rockchip-pm"
+version = "0.1.0"
+
+[dependencies]
+mbarrier = "0.1"
+dma-api = { version = "0.5", features = ["alloc"] }
+log = "0.4"
+tock-registers = "0.10"
+rdif-base = "0.7"
+
+[dev-dependencies]
+bare-test = "0.7"
+
+[build-dependencies]
+bare-test-macros = "0.2"
+
+[[test]]
+harness = false
+name = "test"

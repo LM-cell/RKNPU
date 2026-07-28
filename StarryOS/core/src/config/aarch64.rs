@@ -1,0 +1,23 @@
+/// The size of the kernel stack.
+pub const KERNEL_STACK_SIZE: usize = 0x40000;
+
+/// The base address of the user space (主程序).
+pub const USER_SPACE_BASE: usize = 0x1000;
+/// The size of the user space.
+pub const USER_SPACE_SIZE: usize = 0x7fff_ffff_f000;
+
+/// The base address for user interpreter (动态链接器).
+pub const USER_INTERP_BASE: usize = 0x4000_0000;  // 1GB
+
+/// The address of signal trampoline.
+pub const SIGNAL_TRAMPOLINE: usize = 0x4100_0000;  // 1GB + 16MB
+
+/// The lowest address of the user heap.
+pub const USER_HEAP_BASE: usize = 0x10000000;  // 256MB
+/// The size of the user heap - 减小到合理大小
+pub const USER_HEAP_SIZE: usize = 0x100_0000;  // 16MB
+
+/// The highest address of the user stack.
+pub const USER_STACK_TOP: usize = 0x7fff_0000_0000;
+/// The size of the user stack.
+pub const USER_STACK_SIZE: usize = 0x10_0000;  // 1MB

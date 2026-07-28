@@ -1,0 +1,28 @@
+[package]
+name = "rknpu-starry-adapter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = "0.4"
+rknpu = { path = "../rknpu" }
+rdrive = { path = "../../rdrive/rdrive" }
+rockchip-pm = { path = "../rockchip-pm" }
+axklib = { path = "../../StarryOS/arceos/api/axklib" }
+axerrno = "0.1"
+axfs-ng-vfs = "0.1"
+axhal = { path = "../../StarryOS/arceos/modules/axhal", features = ["uspace"] }
+event-listener = { version = "5.4.0", default-features = false }
+lazy_static = { version = "1.5", features = ["spin_no_std"] }
+memory_addr = "0.4"
+starry-core = { path = "../../StarryOS/core" }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+axtask = { path = "../../StarryOS/arceos/modules/axtask" }
+
+[patch.crates-io]
+rdrive = { path = "../../rdrive/rdrive" }
+rdrive-macros = { path = "../../rdrive/rdrive-macros" }
+rdif-base = { path = "../../rdrive/interface/rdif-base" }
+rdif-pcie = { path = "../../rdrive/interface/rdif-pcie" }
+pcie = { path = "../../rdrive/bus/pcie" }

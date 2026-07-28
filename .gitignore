@@ -1,0 +1,14 @@
+/target
+.spec-workflow
+*.bin
+*.elf
+*.img
+other/
+*.pdf
+npu-state-machine-context.md
+.gitnexus
+AGENTS.md
+CLAUDE.md
+.claude/*
+!.claude/skills/
+.humanize/

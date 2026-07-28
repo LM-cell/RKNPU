@@ -1,0 +1,106 @@
+[package]
+name = "axfeat"
+version.workspace = true
+edition.workspace = true
+authors = ["Yuekai Jia <equation618@gmail.com>"]
+description = "Top-level feature selection for ArceOS"
+license.workspace = true
+homepage.workspace = true
+repository = "https://github.com/arceos-org/arceos/tree/main/api/axfeat"
+documentation = "https://arceos-org.github.io/arceos/axfeat/index.html"
+
+[features]
+default = []
+
+# Multicore
+smp = ["axhal/smp", "axruntime/smp", "axtask?/smp", "kspin/smp"]
+
+# Floating point/SIMD
+fp-simd = ["axhal/fp-simd"]
+
+# Interrupts
+irq = ["axhal/irq", "axruntime/irq", "axtask?/irq", "axklib-impl?/irq"]
+ipi = ["irq", "dep:axipi", "axhal/ipi", "axruntime/ipi"]
+
+# Custom or default platforms
+myplat = ["axhal/myplat"]
+defplat = ["axhal/defplat"]
+
+# Memory
+alloc = ["axalloc", "axruntime/alloc"]
+alloc-tlsf = ["axalloc/tlsf"]
+alloc-slab = ["axalloc/slab"]
+alloc-buddy = ["axalloc/buddy"]
+alloc-level-1 = ["axalloc/level-1", "alloc"]
+page-alloc-64g = ["axalloc/page-alloc-64g"] # up to 64G memory capacity
+page-alloc-4g = ["axalloc/page-alloc-4g"] # up to 4G memory capacity
+paging = ["alloc", "axhal/paging", "axruntime/paging"]
+tls = ["alloc", "axhal/tls", "axruntime/tls", "axtask?/tls"]
+dma = ["alloc", "paging"]
+
+fs-times = ["axfs-ng/times"]
+
+# Multi-threading and scheduler
+multitask = ["alloc", "axtask/multitask", "axsync/multitask", "axruntime/multitask"]
+sched-fifo = ["axtask/sched-fifo"]
+sched-rr = ["axtask/sched-rr", "irq"]
+sched-cfs = ["axtask/sched-cfs", "irq"]
+
+# File system
+fs = ["alloc", "paging", "dep:axfs-ng", "axruntime/fs"] # TODO: try to remove "paging"
+fat = ["axfs-ng/fat"]
+ext4 = ["axfs-ng/ext4"]
+
+# Networking
+net = ["alloc", "paging", "dep:axnet", "axruntime/net"]
+
+# Display
+display = ["alloc", "paging", "dep:axdisplay", "axruntime/display"]
+
+# Input
+input = ["alloc", "paging", "dep:axdisplay", "axruntime/input"]
+
+# Real Time Clock (RTC) Driver.
+rtc = ["axhal/rtc", "axruntime/rtc"]
+
+# Device drivers
+driver-dyn = ["axruntime/driver-dyn","axdriver?/dyn", "dep:axklib-impl"]
+bus-mmio = ["axdriver?/bus-mmio"]
+bus-pci = ["axdriver?/bus-pci"]
+driver-virtio-blk = ["axdriver/virtio-blk"]
+driver-virtio-net = ["axdriver/virtio-net"]
+driver-virtio-gpu = ["axdriver/virtio-gpu"]
+driver-virtio-input = ["axdriver/virtio-input"]
+driver-ramdisk = ["axdriver/ramdisk"]
+driver-sdmmc-gpt = ["axdriver/sdmmc-gpt"]
+driver-ahci-gpt = ["axdriver/ahci-gpt"]
+driver-ixgbe = ["axdriver/ixgbe"]
+driver-fxmac = ["axdriver/fxmac"] # fxmac ethernet driver for PhytiumPi
+driver-bcm2835-sdhci = ["axdriver/bcm2835-sdhci"]
+
+# Logging
+log-level-off = ["axlog/log-level-off"]
+log-level-error = ["axlog/log-level-error"]
+log-level-warn = ["axlog/log-level-warn"]
+log-level-info = ["axlog/log-level-info"]
+log-level-debug = ["axlog/log-level-debug"]
+log-level-trace = ["axlog/log-level-trace"]
+
+# Backtrace
+backtrace = ["axbacktrace/dwarf"]
+
+[dependencies]
+axalloc = { workspace = true, optional = true }
+axbacktrace = { workspace = true }
+axdisplay = { workspace = true, optional = true }
+axdriver = { workspace = true, optional = true }
+axfs-ng = { workspace = true, optional = true }
+axhal = { workspace = true }
+axlog = { workspace = true }
+axnet = { workspace = true, optional = true }
+axruntime = { workspace = true }
+axsync = { workspace = true, optional = true }
+axtask = { workspace = true, optional = true }
+axipi = { workspace = true, optional = true }
+kspin = { version = "0.1", optional = true }
+axklib-impl = {path = "../../modules/axklib-impl", optional = true}

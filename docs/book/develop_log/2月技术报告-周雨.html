@@ -1,0 +1,385 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>2月技术报告-周雨 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-d5f4aac9.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-10640dec.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="2月技术报告-周雨"><a class="header" href="#2月技术报告-周雨">2月技术报告-周雨</a></h1>
+<h2 id="目标与问题"><a class="header" href="#目标与问题">目标与问题</a></h2>
+<h3 id="主要目标"><a class="header" href="#主要目标">主要目标</a></h3>
+<ol>
+<li>阅读 RKNPU 驱动相关源码，学习 NPU/AI 相关知识，将 RKNPU 硬件手册总结为 markdown 文档</li>
+<li>实现NPU驱动异步中断支持</li>
+<li>实现NPU驱动多核多任务并发</li>
+</ol>
+<h3 id="主要问题"><a class="header" href="#主要问题">主要问题</a></h3>
+<ol>
+<li><strong>环境与工具链问题</strong>：开发板 U‑Boot 缺少网卡驱动，只能通过串口加载内核，调试效率低；U-boot网卡驱动编译困难，依赖太多，将会逐步解决</li>
+<li><strong>驱动集成冲突</strong>：尝试将 NPU 驱动集成到 StarryOS 主线时，HAL 层架构 <code>axhal</code> 与 <code>somehal</code> 存在冲突，RK3588 平台级代码集成涉及整个架构的大修改。当前阶段将继续在当前已有驱动基础上开发。暂时不会集成到主线</li>
+</ol>
+<h2 id="方案或思路"><a class="header" href="#方案或思路">方案或思路</a></h2>
+<p>面对上述问题，我制定了以下开发路线：</p>
+<ol>
+<li>
+<p><strong>分阶段学习与验证</strong>：</p>
+<ul>
+<li>第一阶段：学习 NPU 原理、AI 模型推理流程，利用 RKNN Toolkit2 仿真器在 x86 上验证推理链条。</li>
+<li>第二阶段：在真实硬件（OrangePi 5 Plus RK3588）上部署 StarryOS（NPU 版本），验证驱动可行性。</li>
+<li>第三阶段：逆向闭源用户态库 <code>librknnrt.so</code>，整理完整的寄存器语义和任务提交流程，形成社区参考文档。</li>
+</ul>
+</li>
+<li>
+<p><strong>驱动架构设计</strong>：</p>
+<ul>
+<li>采用 <code>rdrive</code> 框架实现设备树（DTB）自动探测，避免硬编码设备地址。</li>
+<li>创建独立的 <code>axdrm</code> crate 实现 DRM 框架，提供 GEM 内存管理和 ioctl 编码解析/分发机制，保持用户态接口兼容性。</li>
+<li>将驱动模块放在 StarryOS 根目录独立开发，规避 workspace 循环依赖问题，待功能稳定后再集成回 ArceOS。</li>
+</ul>
+</li>
+<li>
+<p><strong>寄存器访问安全</strong>：</p>
+<ul>
+<li>使用 <code>svd2rust</code> 工具从 SVD 描述文件生成类型安全的寄存器库 <code>rknpu-regs</code>，覆盖 PC、CNA、CORE、DPU、PPU、DDMA 等所有功能块。</li>
+<li>通过编译期类型检查杜绝寄存器偏移量写错、位域宽度混淆等错误。</li>
+</ul>
+</li>
+<li>
+<p><strong>异步中断处理</strong>：</p>
+<ul>
+<li>利用 WFI（Wait For Interrupt）指令实现低功耗等待，NPU 核心完成任务后触发中断，CPU 被唤醒并读取中断状态寄存器。</li>
+<li>为后续多核并发任务提交奠定基础——每个 NPU 核心可独立触发中断，CPU 侧可并行等待多个核心的完成通知。</li>
+</ul>
+</li>
+<li>
+<p><strong>多核并发任务调度</strong>：</p>
+<ul>
+<li>扩展驱动数据结构，支持多套寄存器命令缓冲区（regcmd）。</li>
+<li>重构 <code>submit_ioctrl</code> 函数，实现批量任务分配，一次 ioctl 可向多个核心提交任务。</li>
+<li>新增 <code>wait_all_npucore</code> 并行等待机制，循环检查各核心中断状态，直到所有核心完成任务。</li>
+</ul>
+</li>
+<li>
+<p><strong>问题规避与迂回</strong>：</p>
+<ul>
+<li>暂时放弃将驱动集成到 StarryOS 主线，专注于在 NPU 版本上开发核心功能，减少架构冲突带来的干扰。</li>
+<li>通过刷写干净的 SPI 镜像解决 U‑Boot 环境变量残留问题，明确使用 eMMC 作为存储介质。</li>
+</ul>
+</li>
+</ol>
+<h2 id="实现情况"><a class="header" href="#实现情况">实现情况</a></h2>
+<h3 id="1-基础知识学习与仿真验证第一周"><a class="header" href="#1-基础知识学习与仿真验证第一周">1. 基础知识学习与仿真验证（第一周）</a></h3>
+<ul>
+<li><strong>NPU 原理学习</strong>：理解了 NPU 作为神经网络处理单元的本质，掌握了 AI 模型训练与推理的基本流程，以及驱动在推理链条中的角色（用户态库通过 ioctl 与内核驱动通信，驱动负责任务调度、DMA 搬运、寄存器操作）。</li>
+<li><strong>RKNN Toolkit2 仿真验证</strong>：在 x86 主机上利用 RKNN Toolkit2 的仿真器跑通测例，梳理出 RKNN 推理的 API 调用流程：<code>rknn_init</code> → <code>rknn_inputs_set</code> → <code>rknn_run</code> → <code>rknn_outputs_get</code> → <code>rknn_destroy</code>。</li>
+</ul>
+<h3 id="2-开发板验证与文档整理第二周"><a class="header" href="#2-开发板验证与文档整理第二周">2. 开发板验证与文档整理（第二周）</a></h3>
+<ul>
+<li><strong>硬件验证</strong>：在 OrangePi 5 Plus（RK3588）开发板上成功部署 StarryOS（NPU 版本），并跑通 RKNN 推理测例，验证了 NPU 驱动在真实硬件上的可行性。</li>
+<li><strong>闭源库逆向与文档</strong>：系统逆向分析了 <code>librknnrt.so</code> 用户态库，结合官方 TRM 手册和开源内核驱动，整理了完整的寄存器语义、任务提交流程、状态机与 DMA Fence 路径，形成 <strong><a href="https://qc-gpu-driver.github.io/starryos-pulsar/documents/docs.html">GitHub Pages 文档</a></strong>，为社区提供参考。</li>
+</ul>
+<h3 id="3-驱动骨架与-drm-框架搭建第二周"><a class="header" href="#3-驱动骨架与-drm-框架搭建第二周">3. 驱动骨架与 DRM 框架搭建（第二周）</a></h3>
+<ul>
+<li><strong>设备探测</strong>：编写 <code>dtbparse.rs</code>，利用 <code>rdrive</code> 框架通过设备树（DTB）自动探测 NPU 设备（<code>compatible = "rockchip,rk3588-rknn"</code>），提取 MMIO 基址（<code>0xfdab0000</code>，大小 <code>0x9000</code>）和中断号（SPI 110‑112）。</li>
+<li><strong>DRM 框架</strong>：创建 <code>axdrm</code> crate，实现 GEM 内存对象管理（handle 分配/回收、物理地址映射）和 ioctl 编码解析/分发机制，为 NPU 驱动提供兼容 Linux DRM 的用户态接口。</li>
+</ul>
+<h3 id="4-寄存器库重构与-ai-辅助注释第三周"><a class="header" href="#4-寄存器库重构与-ai-辅助注释第三周">4. 寄存器库重构与 AI 辅助注释（第三周）</a></h3>
+<ul>
+<li><strong>svd2rust 寄存器库</strong>：基于 SVD 描述文件生成类型安全的寄存器库 <code>rknpu-regs</code>，覆盖 PC、CNA、CORE、DPU、PPU、DDMA 等所有功能块。将原有的手动偏移+裸指针访问改为类型安全、带自动补全和文档的 API，例如：
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let status = core.pc().interrupt_status().read().bits();
+core.pc().interrupt_clear().write(|w| unsafe { w.bits(INT_CLEAR_ALL) });
+<span class="boring">}</span></code></pre>
+</li>
+<li><strong>AI 辅助注释</strong>：利用 AI 为 <code>axnpu</code> 驱动代码添加详细的中文注释，明确关键函数的调用流程和参数含义，降低后续开发和协作门槛。</li>
+</ul>
+<h3 id="5-异步中断处理实现第三周"><a class="header" href="#5-异步中断处理实现第三周">5. 异步中断处理实现（第三周）</a></h3>
+<ul>
+<li><strong>WFI 等待机制</strong>：实现基于 WFI（Wait For Interrupt）指令的低功耗异步等待。NPU 核心完成任务后触发中断，CPU 进入休眠状态；中断到来时 CPU 被唤醒，读取中断状态寄存器并清除标志位，返回任务执行结果。</li>
+<li><strong>多核中断基础</strong>：该机制为多核并发任务提交打下基础，每个 NPU 核心可独立触发中断，CPU 侧可并行等待多个核心的完成通知。</li>
+</ul>
+<h3 id="6-多核并行矩阵乘法实现第五周"><a class="header" href="#6-多核并行矩阵乘法实现第五周">6. 多核并行矩阵乘法实现（第五周）</a></h3>
+<ul>
+<li><strong>三核并行 QKV 计算</strong>：扩展 <code>Transformer</code> 结构体，支持 3 套 regcmd 缓冲区，实现 <code>matmul_npu_3core_qkv</code> 函数，将 Transformer 中的 Q、K、V 三个矩阵乘法并行提交到 3 个 NPU 核心。</li>
+<li><strong>批量任务分配</strong>：重构 <code>submit_ioctrl</code> 函数，支持将用户空间的任务数组自动分配到多个 NPU 核心，一次 ioctl 可向多个核心提交任务。</li>
+<li><strong>并行等待机制</strong>：新增 <code>wait_all_npucore</code> 函数，循环检查各核心中断状态，利用 WFI 等待所有核心完成，实现真正的多核并行等待。</li>
+</ul>
+<h3 id="7-板端验证结果"><a class="header" href="#7-板端验证结果">7. 板端验证结果</a></h3>
+<p>板端运行日志显示多核并行成功：</p>
+<pre><code>[261.640936] Total tasks to submit: 3, active cores: 3, max batch size: 4095
+[261.650710] Total tasks to submit: 1, active cores: 1, max batch size: 4095
+[262.295035] Total tasks to submit: 3, active cores: 3, max batch size: 4095
+...
+Once upon a time...
+</code></pre>
+<ul>
+<li><code>3 tasks, 3 cores</code> 表示 QKV 三核并行成功。</li>
+<li><code>1 tasks, 1 core</code> 表示后续的 <code>wo</code> 矩阵乘法（单核）。</li>
+<li>模型推理输出 “Once upon a time…” 验证结果正确。</li>
+</ul>
+<h3 id="8-其他问题修复第三周"><a class="header" href="#8-其他问题修复第三周">8. 其他问题修复（第三周）</a></h3>
+<ul>
+<li><strong>Axvisor 文件系统同步问题</strong>：修复了 rsext4 缓存未同步导致的磁盘数据不一致问题，在写操作后增加 <code>sync_to_disk</code> 调用，确保文件系统一致性（PR <a href="https://github.com/arceos-hypervisor/axvisor/pull/368">#368</a>）。</li>
+</ul>
+<h2 id="下一步的计划建议"><a class="header" href="#下一步的计划建议">下一步的计划/建议</a></h2>
+<p>基于 1 月末和 2 月份的开发进展，后续工作可围绕以下方向展开：</p>
+<ol>
+<li>
+<p><strong>驱动稳定性与健壮性</strong></p>
+<ul>
+<li>当前驱动还有很多unimpliment函数和特性，我将会继续完善它</li>
+<li>完善错误处理机制，增强驱动健壮性</li>
+</ul>
+</li>
+<li>
+<p><strong>多核调度优化</strong></p>
+<ul>
+<li>实现动态负载均衡，根据各 NPU 核心的利用率自动分配任务。（当前多核并发是简单的任务切片）</li>
+<li>支持任务优先级调度，确保高优先级任务优先执行。</li>
+<li>探索任务依赖关系（DAG）支持，实现复杂模型层的流水线并行。</li>
+</ul>
+</li>
+<li>
+<p><strong>主线集成与代码重构</strong></p>
+<ul>
+<li>待 NPU 驱动功能稳定后，重新评估集成到 StarryOS 主线的可行性，解决 HAL 层冲突。</li>
+<li>将 <code>axnpu-rknn</code> 驱动模块迁移回 ArceOS 的 <code>modules/</code> 目录，遵循项目模块化规范。</li>
+</ul>
+</li>
+<li>
+<p><strong>文档与社区建设</strong></p>
+<ul>
+<li>持续更新 GitHub Pages 文档，补充更多寄存器细节、性能调优指南和故障排查案例。</li>
+</ul>
+</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../develop_log/monthly_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../develop_log/3月技术报告-周雨.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../develop_log/monthly_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../develop_log/3月技术报告-周雨.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

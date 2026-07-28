@@ -1,0 +1,569 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>当前 NPU 队列调度器配合说明 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-d5f4aac9.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-10640dec.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="当前-npu-队列调度器配合说明"><a class="header" href="#当前-npu-队列调度器配合说明">当前 NPU 队列调度器配合说明</a></h1>
+<p>这份文档讲的是当前这版 NPU 调度链路到底怎么配合。重点不是复盘历史方案，而是把已经落到代码里的职责边界讲清楚：<code>card1</code> 做什么，StarryOS 里的 scheduler 做什么，驱动和 IRQ 路径现在只剩下什么责任，以及一次 <code>Submit</code> 是怎么从入队一路走到返回用户态的。</p>
+<p>这版实现保留了一个很明确的核心模型：</p>
+<ul>
+<li>对外还是阻塞 <code>Submit</code> ioctl</li>
+<li>对内是一整次 submit 入队</li>
+<li>真正下发给硬件时是 per-core、per-task streaming dispatch</li>
+<li>每个 submit 自己有 waiter</li>
+<li>全局只有一个 kick，用来唤醒 worker</li>
+<li>in-flight dispatch 的 owner 只保留在 scheduler 一处</li>
+</ul>
+<p>所以从用户态看，语义没变；从内核实现看，控制流已经不是“调用线程自己 loop 推完整次 submit”了，而是“调用线程阻塞，后台 worker 负责推进和补发”。</p>
+<h2 id="1-先说结论"><a class="header" href="#1-先说结论">1. 先说结论</a></h2>
+<p>当前链路可以概括成四句话：</p>
+<ol>
+<li>用户线程发起 <code>Submit</code>，<code>card1</code> 先把 <code>RknpuSubmit</code> 和 <code>RknpuTask[]</code> 拷到内核 shadow。</li>
+<li>整次 submit 作为一个队列项入队，但真正发给硬件时是按 core、按 task 一次一次地下发。</li>
+<li>哪个 core 先完成，就先 harvest 哪个 core，再尽快给它补下一个可运行 task。</li>
+<li>原始提交线程睡在自己的 waiter 上，等 submit 进入 terminal 状态后被唤醒，再把最终结果拷回用户态。</li>
+</ol>
+<p>这就是“阻塞 submit + 内部异步调度”的准确含义。</p>
+<h2 id="2-为什么要收成现在这个形状"><a class="header" href="#2-为什么要收成现在这个形状">2. 为什么要收成现在这个形状</a></h2>
+<p>之前的问题主要有两个。</p>
+<p>第一个问题是职责缠在一起。<code>card1</code> 既处理 ioctl，又自己循环推进 task，还要主动 <code>yield_now()</code> 给别的执行流机会。路径长，问题一多就很难沿着职责边界查。</p>
+<p>第二个问题是内部状态太散。一份 submit 的信息会在 <code>card1 / scheduler / queue / driver</code> 之间换着名字存几次；in-flight dispatch 也会在 queue 和 driver 两边都留一份反向绑定，最后软件模型比真正需要的边界还重。</p>
+<p>所以现在的收口原则很直接：</p>
+<ul>
+<li><code>RknpuSubmit</code> 只留在 ioctl 边界和最终 copy-back 边界</li>
+<li>queue 只维护“这个 submit 还剩什么能调度”</li>
+<li>scheduler 独占 in-flight dispatch ownership</li>
+<li>driver / IRQ 只发布 per-core 原始完成状态</li>
+</ul>
+<h2 id="3-各层现在分别负责什么"><a class="header" href="#3-各层现在分别负责什么">3. 各层现在分别负责什么</a></h2>
+<h3 id="31-card1阻塞-ioctl-入口"><a class="header" href="#31-card1阻塞-ioctl-入口">3.1 <code>card1</code>：阻塞 ioctl 入口</a></h3>
+<p><code>card1</code> 现在只做三件事：</p>
+<ol>
+<li>从用户态拷贝 <code>RknpuSubmit</code> 和 <code>RknpuTask[]</code></li>
+<li>构造 <code>RknpuQueuedSubmit</code> 并调用 <code>enqueue_submit(...)</code></li>
+<li>等待完成，取回 <code>CompletedSubmit</code>，再统一拷回用户态</li>
+</ol>
+<p>它不再自己步进调度，也不再负责保存任何调度期内部状态。它只保留阻塞设备调用入口该有的职责。</p>
+<h3 id="32-npuscheduler真正的调度器"><a class="header" href="#32-npuscheduler真正的调度器">3.2 <code>NpuScheduler</code>：真正的调度器</a></h3>
+<p>StarryOS 里的 <code>NpuScheduler</code> 是当前链路的控制中心。它手里有四类核心状态：</p>
+<ul>
+<li><code>queue: RknpuTaskQueue</code></li>
+<li><code>waiters: BTreeMap&lt;RknpuQueueTaskId, Arc&lt;NpuSubmitWaiter&gt;&gt;</code></li>
+<li><code>inflight: [Option&lt;InflightDispatch&gt;; NPU_MAX_CORES]</code></li>
+<li><code>kick: Event</code></li>
+</ul>
+<p>分工很明确：</p>
+<ul>
+<li><code>queue</code> 管 submit 级进度</li>
+<li><code>waiters</code> 管阻塞线程的睡眠和唤醒</li>
+<li><code>inflight</code> 管当前每个硬件 core 在跑哪一个 dispatch</li>
+<li><code>kick</code> 只负责把 worker 从睡眠态唤醒</li>
+</ul>
+<p>也就是说，waiter 是 per-submit 的，kick 是全局的；二者分别解决“谁该睡”和“worker 什么时候该起来干活”两个完全不同的问题。</p>
+<h3 id="33-driversrknpu单次硬件下发原语"><a class="header" href="#33-driversrknpu单次硬件下发原语">3.3 <code>drivers/rknpu</code>：单次硬件下发原语</a></h3>
+<p>驱动层现在退回到最小硬件编程层。它保留的核心原语就是：</p>
+<ul>
+<li><code>submit_ioctrl_step(...)</code></li>
+<li><code>harvest_completed_dispatches()</code></li>
+</ul>
+<p>其中：</p>
+<ul>
+<li><code>submit_ioctrl_step(...)</code> 只负责把一个 task 发给一个 core</li>
+<li><code>harvest_completed_dispatches()</code> 只负责把 IRQ top-half 已经发布好的 raw completion 收回来</li>
+</ul>
+<p>驱动不再负责维护完整 submit 生命周期，也不再保存 queue 语义的绑定关系。</p>
+<h3 id="34-irq-top-half只发布-raw-per-core-completion"><a class="header" href="#34-irq-top-half只发布-raw-per-core-completion">3.4 IRQ top-half：只发布 raw per-core completion</a></h3>
+<p>IRQ handler 现在只做最小动作：</p>
+<ul>
+<li>读取硬件 IRQ 状态</li>
+<li>fuzz status</li>
+<li>清硬件中断</li>
+<li>把结果按 core 写入共享原子</li>
+</ul>
+<p>它不直接继续调度，也不持有 queue 语义的数据结构。这样 top-half 足够短，行为也足够稳定。</p>
+<h2 id="4-内部数据模型怎么收口"><a class="header" href="#4-内部数据模型怎么收口">4. 内部数据模型怎么收口</a></h2>
+<p>这版重构的核心不是“加了多少新类型”，而是把每个类型的边界收窄了。</p>
+<h3 id="41-rknpusubmit-只留在边界"><a class="header" href="#41-rknpusubmit-只留在边界">4.1 <code>RknpuSubmit</code> 只留在边界</a></h3>
+<p><code>RknpuSubmit</code> 现在只用于两处：</p>
+<ul>
+<li>ioctl 入口时承接用户态 header</li>
+<li>submit 终态时重新组装 copy-back 给用户态</li>
+</ul>
+<p>调度期间不再把它当成一个全程可变的内部状态容器到处传、到处改。</p>
+<h3 id="42-submitmeta-是内部不可变输入视图"><a class="header" href="#42-submitmeta-是内部不可变输入视图">4.2 <code>SubmitMeta</code> 是内部不可变输入视图</a></h3>
+<p>调度期真正使用的是 <code>SubmitMeta</code>。它只保留调度所需的固定字段：</p>
+<ul>
+<li><code>flags</code></li>
+<li><code>priority</code></li>
+<li><code>core_mask</code></li>
+<li><code>task_dma_base</code></li>
+<li><code>lane_ranges</code></li>
+<li><code>task_total</code></li>
+</ul>
+<p><code>lane_ranges</code> 在入队时就做一次归一化：</p>
+<ul>
+<li>如果 <code>subcore_task[]</code> 全空，就默认变成 <code>slot0 = [0, task_total)</code></li>
+<li>否则只按已有非空 lane 解释</li>
+</ul>
+<p>这样后面的 queue / scheduler 不需要再在运行期反复猜 lane layout。</p>
+<h3 id="43-completedsubmit-是-terminal-返回模型"><a class="header" href="#43-completedsubmit-是-terminal-返回模型">4.3 <code>CompletedSubmit</code> 是 terminal 返回模型</a></h3>
+<p>调度器在 terminal 时返回的不是整个 queue entry，而是一个更明确的结果模型：</p>
+<ul>
+<li><code>submit: RknpuSubmit</code></li>
+<li><code>tasks: Vec&lt;RknpuTask&gt;</code></li>
+<li><code>last_error: Option&lt;RknpuError&gt;</code></li>
+</ul>
+<p>这个边界很重要，因为 <code>card1</code> 真正需要的只有这三样，不需要知道 queue 内部状态机细节。</p>
+<h3 id="44-inflightdispatch-是唯一的-in-flight-owner"><a class="header" href="#44-inflightdispatch-是唯一的-in-flight-owner">4.4 <code>InflightDispatch</code> 是唯一的 in-flight owner</a></h3>
+<p>每个正在硬件上飞的 dispatch 现在只在 scheduler 的 <code>inflight[core]</code> 里有一份记录，里面保存：</p>
+<ul>
+<li><code>queue_task_id</code></li>
+<li><code>core_slot</code></li>
+<li><code>subcore_slot</code></li>
+<li><code>task_index</code></li>
+<li><code>task_ptr</code></li>
+<li><code>expected_irq_mask</code></li>
+</ul>
+<p>这份记录回答的就是一个问题：</p>
+<p>“这个 core 当前跑的是哪个 submit 的哪个 task；如果 completion 回来，我该把结果记到哪里。”</p>
+<p>queue 不再保存 per-core 反向绑定，driver 也不再保存 queue-facing 绑定。</p>
+<h3 id="45-corecompletion-是-driver-向-scheduler-提交的最小完成记录"><a class="header" href="#45-corecompletion-是-driver-向-scheduler-提交的最小完成记录">4.5 <code>CoreCompletion</code> 是 driver 向 scheduler 提交的最小完成记录</a></h3>
+<p>driver harvest 之后只返回：</p>
+<ul>
+<li><code>core_slot</code></li>
+<li><code>observed_irq_status</code></li>
+</ul>
+<p>scheduler 拿到它以后，再结合 <code>InflightDispatch.expected_irq_mask</code> 计算：</p>
+<ul>
+<li><code>last_task_int_status</code></li>
+<li><code>task_error</code></li>
+</ul>
+<p>然后推进 queue 状态机。这一步把“硬件观测”与“队列语义”干净地分开了。</p>
+<h2 id="5-queue-是怎么维护游标和分发任务的"><a class="header" href="#5-queue-是怎么维护游标和分发任务的">5. queue 是怎么维护游标和分发任务的</a></h2>
+<p>这部分是当前调度模型的核心。</p>
+<h3 id="51-queue-维护的是-submit-级进度不是-per-core-绑定"><a class="header" href="#51-queue-维护的是-submit-级进度不是-per-core-绑定">5.1 queue 维护的是 submit 级进度，不是 per-core 绑定</a></h3>
+<p><code>RknpuQueueTask</code> 里真正和调度推进相关的字段只有这些：</p>
+<ul>
+<li><code>meta</code></li>
+<li><code>tasks</code></li>
+<li><code>subcore_cursors</code></li>
+<li><code>subcore_running_mask</code></li>
+<li><code>completed_task_count</code></li>
+<li><code>inflight_core_mask</code></li>
+<li><code>last_error</code></li>
+<li><code>ready_queued</code></li>
+</ul>
+<p>语义分别是：</p>
+<ul>
+<li><code>subcore_cursors</code>：每个逻辑 lane 已经推进到该 lane 的第几个 task</li>
+<li><code>subcore_running_mask</code>：某个 lane 当前是否已经有 task 在飞</li>
+<li><code>completed_task_count</code>：这次 submit 已经完成了多少 task</li>
+<li><code>inflight_core_mask</code>：当前有哪些物理 core 正在执行这个 submit</li>
+<li><code>ready_queued</code>：这个 submit 当前是否已经挂在 ready 队列里，避免重复入队</li>
+</ul>
+<h3 id="52-reserve_next_dispatch-只产出最小-reservation-token"><a class="header" href="#52-reserve_next_dispatch-只产出最小-reservation-token">5.2 <code>reserve_next_dispatch()</code> 只产出最小 reservation token</a></h3>
+<p>queue 不再给 scheduler 一整份“大计划”，而是一次只给一个最小 reservation：</p>
+<ul>
+<li><code>queue_task_id</code></li>
+<li><code>subcore_slot</code></li>
+<li><code>task_index</code></li>
+</ul>
+<p>这意味着 queue 只负责说“下一个可以发的是谁”，不负责持有这个 dispatch 之后在 driver 侧的绑定信息。</p>
+<h3 id="53-游标推进规则"><a class="header" href="#53-游标推进规则">5.3 游标推进规则</a></h3>
+<p>worker 调度时，queue 会按下面的规则挑任务：</p>
+<ol>
+<li>先按 priority 从 ready 队列里挑 submit</li>
+<li>再在这个 submit 内部按 <code>subcore_slot</code> 扫描可运行 lane</li>
+<li>跳过已经在飞的 lane</li>
+<li>用 <code>subcore_cursors[slot]</code> 算出当前 lane 的下一个 <code>task_index</code></li>
+<li>成功 reservation 后，设置：
+<ul>
+<li><code>subcore_running_mask</code></li>
+<li><code>inflight_core_mask</code></li>
+</ul>
+</li>
+</ol>
+<p>completion 回来以后，再清掉对应 bit，并把该 lane 的 cursor 加一。</p>
+<h3 id="54-为什么同一个-submit-能同时占多个-core"><a class="header" href="#54-为什么同一个-submit-能同时占多个-core">5.4 为什么同一个 submit 能同时占多个 core</a></h3>
+<p>因为 <code>subcore_running_mask</code> 限制的是“同一个 lane 不能并发重复下发”，不是“同一个 submit 只能占一个 core”。</p>
+<p>所以只要：</p>
+<ul>
+<li>这个 submit 还有别的 lane 可跑</li>
+<li>目标 core 在 <code>core_mask</code> 允许范围内</li>
+<li>当前有空闲 core</li>
+</ul>
+<p>那么同一个 submit 完全可以在一轮里占多个 core。</p>
+<h3 id="55-为什么-faulted-submit-还要等-inflight-core-排空"><a class="header" href="#55-为什么-faulted-submit-还要等-inflight-core-排空">5.5 为什么 faulted submit 还要等 inflight core 排空</a></h3>
+<p><code>Faulted</code> 不等于立即 terminal。</p>
+<p>当前实现里，一个 submit 即便已经 faulted，只要 <code>inflight_core_mask != 0</code>，它还不能算 terminal。因为还有别的 core 上的 in-flight task 没收干净，waiter 这时不能提前醒。</p>
+<p>所以 terminal 的判定是：</p>
+<ul>
+<li><code>Completed</code></li>
+<li>或者 <code>Faulted &amp;&amp; inflight_core_mask == 0</code></li>
+</ul>
+<h2 id="6-一次完整的-submit-现在怎么走"><a class="header" href="#6-一次完整的-submit-现在怎么走">6. 一次完整的 <code>Submit</code> 现在怎么走</a></h2>
+<h3 id="第-1-步用户态发起-ioctl"><a class="header" href="#第-1-步用户态发起-ioctl">第 1 步：用户态发起 ioctl</a></h3>
+<p>用户态传入 <code>RknpuSubmit</code> 和 <code>RknpuTask[]</code>。<code>card1</code> 把它们拷进内核 shadow。</p>
+<h3 id="第-2-步构造-rknpuqueuedsubmit"><a class="header" href="#第-2-步构造-rknpuqueuedsubmit">第 2 步：构造 <code>RknpuQueuedSubmit</code></a></h3>
+<p><code>card1</code> 把原始 submit 拆成两部分：</p>
+<ul>
+<li>边界专用的 <code>RknpuSubmit</code></li>
+<li>调度专用的 <code>SubmitMeta + Vec&lt;RknpuTask&gt;</code></li>
+</ul>
+<p>然后包装成 <code>RknpuQueuedSubmit</code> 入队。</p>
+<h3 id="第-3-步提交线程阻塞"><a class="header" href="#第-3-步提交线程阻塞">第 3 步：提交线程阻塞</a></h3>
+<p><code>enqueue_submit(...)</code> 为这个 submit 建立自己的 <code>NpuSubmitWaiter</code>。随后提交线程执行 <code>wait_for_submit(...)</code>，睡到 waiter 的 <code>WaitQueue</code> 上。</p>
+<h3 id="第-4-步worker-被-kick-唤醒"><a class="header" href="#第-4-步worker-被-kick-唤醒">第 4 步：worker 被 kick 唤醒</a></h3>
+<p>新 submit 入队后，scheduler 调一次 <code>kick.notify_relaxed(1)</code>。worker 如果在睡眠，就会被唤醒开始工作。</p>
+<p>这里的 <code>kick</code> 不是“某个 submit 的完成事件”，它只是一个全局“有活了，起来看队列”的唤醒信号。</p>
+<h3 id="第-5-步worker-给空闲-core-分发任务"><a class="header" href="#第-5-步worker-给空闲-core-分发任务">第 5 步：worker 给空闲 core 分发任务</a></h3>
+<p>worker 会循环做两件事：</p>
+<ul>
+<li><code>harvest_completed_cores()</code></li>
+<li><code>dispatch_idle_cores()</code></li>
+</ul>
+<p>在 dispatch 路径里，它会：</p>
+<ol>
+<li>找一个当前没有 inflight 的 core</li>
+<li>让 queue 给出一个 reservation token</li>
+<li>从 queue task 里取出对应 task，组装 <code>InflightDispatch</code></li>
+<li>先写入 <code>state.inflight[core]</code></li>
+<li>如果这是本轮第一次给这个 submit 发任务，就做一次 <code>confirm_write_all()</code></li>
+<li>调用 driver 的 <code>submit_ioctrl_step(...)</code></li>
+</ol>
+<p>如果 driver dispatch 失败，就回滚 <code>state.inflight[core]</code> 和 queue reservation。</p>
+<h3 id="第-6-步irq-到来只发布原始完成状态"><a class="header" href="#第-6-步irq-到来只发布原始完成状态">第 6 步：IRQ 到来，只发布原始完成状态</a></h3>
+<p>哪个 core 先完成，就哪个 core 的 top-half 先把 <code>observed_irq_status</code> 发布出来。此时不会直接继续调度。</p>
+<h3 id="第-7-步worker-harvest-completion"><a class="header" href="#第-7-步worker-harvest-completion">第 7 步：worker harvest completion</a></h3>
+<p>worker 下次循环里会：</p>
+<ol>
+<li>从 driver 拿到 <code>CoreCompletion</code></li>
+<li>通过 <code>state.inflight[core]</code> 找到对应 <code>InflightDispatch</code></li>
+<li>计算：
+<ul>
+<li><code>last_task_int_status = observed_irq_status &amp; expected_irq_mask</code></li>
+<li><code>task_error</code></li>
+</ul>
+</li>
+<li>回写 <code>task.int_status</code></li>
+<li>调用 queue 的 <code>complete_dispatch(...)</code> 推进 submit 状态</li>
+</ol>
+<p>如果 submit 已经 terminal，就把 task_id 记到 terminal 列表里。</p>
+<h3 id="第-8-步terminal-path-唤醒-waiter"><a class="header" href="#第-8-步terminal-path-唤醒-waiter">第 8 步：terminal path 唤醒 waiter</a></h3>
+<p>terminal path 里，scheduler 会：</p>
+<ul>
+<li>先做一次 <code>prepare_read_all()</code></li>
+<li>然后唤醒该 submit 对应的 waiter</li>
+</ul>
+<p>提交线程被唤醒后，再从 scheduler 取回 <code>CompletedSubmit</code>，并把最终的 task 数组和 submit header 一起拷回用户态。</p>
+<h2 id="7-现在比旧模型少了什么"><a class="header" href="#7-现在比旧模型少了什么">7. 现在比旧模型少了什么</a></h2>
+<p>少掉的其实就是这次刻意拿掉的那些冗余状态。</p>
+<h3 id="71-不再有-submit-信息的多份影子副本"><a class="header" href="#71-不再有-submit-信息的多份影子副本">7.1 不再有 submit 信息的多份影子副本</a></h3>
+<p>现在不会再在内部反复保存这些重复字段：</p>
+<ul>
+<li><code>task_dma_addr</code> 和 <code>submit.task_base_addr</code> 的双存</li>
+<li><code>submit.task_obj_addr</code> 的内部影子</li>
+<li><code>submit.task_counter</code> / <code>submit.hw_elapse_time</code> 的调度期原地写回版本</li>
+<li>queue 上额外存一份 <code>priority</code></li>
+</ul>
+<p>这些都被收回到更单一的边界里了。</p>
+<h3 id="72-不再有-queue-和-driver-的双重反向绑定"><a class="header" href="#72-不再有-queue-和-driver-的双重反向绑定">7.2 不再有 queue 和 driver 的双重反向绑定</a></h3>
+<p>以前 queue 和 driver 都想回答“这个 core 当前到底在跑谁”。现在只有 scheduler 的 <code>InflightDispatch</code> 回答这个问题。</p>
+<h3 id="73-不再有只负责搬字段的-helper"><a class="header" href="#73-不再有只负责搬字段的-helper">7.3 不再有只负责搬字段的 helper</a></h3>
+<p>像旧的 submit view 刷新、ready bit 翻转、active core 反查这类 helper，现在都不需要了。保留下来的 helper 都是状态机规则本身的一部分。</p>
+<h2 id="8-当前实现里还需要注意的点"><a class="header" href="#8-当前实现里还需要注意的点">8. 当前实现里还需要注意的点</a></h2>
+<h3 id="81-worker-还不是-irq-直接唤醒"><a class="header" href="#81-worker-还不是-irq-直接唤醒">8.1 worker 还不是 IRQ 直接唤醒</a></h3>
+<p>当前 worker 在有 inflight core 时，还是通过轻量 <code>yield_now()</code> 轮询 harvest，而不是让 IRQ 直接把 worker 唤醒。</p>
+<p>这不影响语义正确性，但如果以后继续优化内核态延迟，这里还有继续收紧的空间。</p>
+<h3 id="82-confirm_write_all--prepare_read_all-还是全局同步"><a class="header" href="#82-confirm_write_all--prepare_read_all-还是全局同步">8.2 <code>confirm_write_all()</code> / <code>prepare_read_all()</code> 还是全局同步</a></h3>
+<p>现在还是按 GEM 池全局同步，不是按单 submit 精细同步。这版先保证路径和 ownership 干净，性能细化可以后面再做。</p>
+<h3 id="83-当前切换边界仍然是-task-完成后的-irq-边界"><a class="header" href="#83-当前切换边界仍然是-task-完成后的-irq-边界">8.3 当前切换边界仍然是 task 完成后的 IRQ 边界</a></h3>
+<p>这版已经是多 submit、per-core streaming dispatch，但它仍然不是“任意时刻抢占正在执行的 NPU 指令流”。真正稳定的切换点还是 task 完成后的 IRQ 边界。</p>
+<h2 id="9-队列相关结构体作用"><a class="header" href="#9-队列相关结构体作用">9. 队列相关结构体作用</a></h2>
+<p>这一节单独列一下和 queue / scheduler 直接相关的结构体，后面查代码时可以快速对照。</p>
+<h3 id="91-submitmeta"><a class="header" href="#91-submitmeta">9.1 <code>SubmitMeta</code></a></h3>
+<p>作用：submit 的内部不可变调度视图。</p>
+<p>它只保留调度期真正要用的元数据：flag、priority、core_mask、DMA base、lane_ranges、task_total。它的意义是把 <code>RknpuSubmit</code> 从“内部运行时状态对象”降回“边界协议头”。</p>
+<h3 id="92-rknpuqueuedsubmit"><a class="header" href="#92-rknpuqueuedsubmit">9.2 <code>RknpuQueuedSubmit</code></a></h3>
+<p>作用：从 ioctl 边界进入 queue 时的输入容器。</p>
+<p>它持有：</p>
+<ul>
+<li><code>meta</code></li>
+<li>reply-only 的 submit 字段</li>
+<li>shadow <code>tasks</code></li>
+</ul>
+<p>它只活在“刚入队”这道边界上，目的就是把边界输入整理成 queue 可以直接接管的形式。</p>
+<h3 id="93-rknpuqueuetask"><a class="header" href="#93-rknpuqueuetask">9.3 <code>RknpuQueueTask</code></a></h3>
+<p>作用：一个已经入队、正在被调度器管理的 submit 实体。</p>
+<p>它维护 submit 的生命周期状态、lane cursor、running mask、完成计数、错误状态，以及最终把终态重新组装回 <code>RknpuSubmit</code> 所需的 reply 信息。</p>
+<h3 id="94-rknputaskqueue"><a class="header" href="#94-rknputaskqueue">9.4 <code>RknpuTaskQueue</code></a></h3>
+<p>作用：scheduler 内部的 submit 容器和 ready 选择器。</p>
+<p>它维护：</p>
+<ul>
+<li>全部 queue task 总表</li>
+<li>按 priority 分桶的 ready 队列</li>
+<li>下一个 queue task id</li>
+</ul>
+<p>它只做 submit 选择和 reservation，不做 per-core in-flight ownership。</p>
+<h3 id="95-rknpudispatchreservation"><a class="header" href="#95-rknpudispatchreservation">9.5 <code>RknpuDispatchReservation</code></a></h3>
+<p>作用：queue 交给 scheduler 的最小“可发任务 token”。</p>
+<p>它只说明：</p>
+<ul>
+<li>哪个 submit</li>
+<li>哪个 lane</li>
+<li>哪个 task_index</li>
+</ul>
+<p>不带 driver 绑定，不带 task 指针，不带 IRQ 期望值。</p>
+<h3 id="96-inflightdispatch"><a class="header" href="#96-inflightdispatch">9.6 <code>InflightDispatch</code></a></h3>
+<p>作用：scheduler 独占的 per-core in-flight 记录。</p>
+<p>它把 reservation 扩成真正能完成一次硬件 dispatch 和一次 completion 匹配所需的最小信息，包括 task 指针和 expected IRQ mask。</p>
+<h3 id="97-corecompletion"><a class="header" href="#97-corecompletion">9.7 <code>CoreCompletion</code></a></h3>
+<p>作用：driver 向 scheduler 返回的最小 raw completion。</p>
+<p>它只表达“哪个 core 观察到了什么 IRQ 状态”，不掺杂 queue 语义。</p>
+<h3 id="98-completedsubmit"><a class="header" href="#98-completedsubmit">9.8 <code>CompletedSubmit</code></a></h3>
+<p>作用：terminal submit 返回给 <code>card1</code> 的结果模型。</p>
+<p>它把 scheduler 内部状态机收敛成用户态真正需要的三样结果：</p>
+<ul>
+<li>最终 <code>submit</code></li>
+<li>最终 <code>tasks</code></li>
+<li>最终 <code>last_error</code></li>
+</ul>
+<h3 id="99-npusubmitwaiter"><a class="header" href="#99-npusubmitwaiter">9.9 <code>NpuSubmitWaiter</code></a></h3>
+<p>作用：一个 submit 对应一个阻塞原语。</p>
+<p>原始 ioctl 线程就睡在这里，直到 terminal path 把它唤醒。它解决的是“这个 submit 的提交线程什么时候返回”。</p>
+<h3 id="910-kick-event"><a class="header" href="#910-kick-event">9.10 <code>kick: Event</code></a></h3>
+<p>作用：全局 worker 唤醒器。</p>
+<p>它不对应某个 submit，也不携带完成结果。它只负责在“有新活可做”时把 worker 从睡眠态叫起来。</p>
+<h2 id="10-用一句话收尾"><a class="header" href="#10-用一句话收尾">10. 用一句话收尾</a></h2>
+<p>这版实现真正做成的事情其实很具体：把 <code>Submit</code> 从“调用线程自己 loop 推完整次 submit 的独占路径”，改成了“对外阻塞、对内由 queue + worker 按 core streaming dispatch 推进”的模型。queue 只管 submit 进度，scheduler 独占 in-flight ownership，driver 和 IRQ 只保留原始硬件完成边界，最终结果再由原始提交线程统一回填用户态。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../documents/submit-irq-snapshot-restore.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../documents/rknnlibso/overview.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../documents/submit-irq-snapshot-restore.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../documents/rknnlibso/overview.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

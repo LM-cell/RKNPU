@@ -1,0 +1,67 @@
+[package]
+name = "axtask"
+version.workspace = true
+edition.workspace = true
+authors = ["Yuekai Jia <equation618@gmail.com>"]
+description = "ArceOS task management module"
+license.workspace = true
+homepage.workspace = true
+repository = "https://github.com/arceos-org/arceos/tree/main/modules/axtask"
+documentation = "https://arceos-org.github.io/arceos/axtask/index.html"
+
+[features]
+default = []
+
+multitask = [
+    "dep:axconfig",
+    "dep:axsched",
+    "dep:cpumask",
+    "dep:crate_interface",
+    "dep:futures",
+    "dep:kernel_guard",
+    "dep:kspin",
+    "dep:lazyinit",
+    "dep:memory_addr",
+    "dep:percpu",
+    "dep:pin-project",
+    "dep:spin",
+    "dep:weak-map",
+]
+task-ext = ["dep:extern-trait"]
+irq = []
+tls = ["axhal/tls"]
+preempt = ["irq", "percpu?/preempt", "kernel_guard/preempt"]
+smp = ["kspin/smp"]
+
+sched-fifo = ["multitask"]
+sched-rr = ["multitask", "preempt"]
+sched-cfs = ["multitask", "preempt"]
+
+test = ["percpu?/sp-naive"]
+
+[dependencies]
+axconfig = { workspace = true, optional = true }
+axhal = { workspace = true }
+
+axerrno = { workspace = true }
+axpoll = { workspace = true }
+axsched = { git = "https://github.com/Starry-OS/axsched.git", rev = "2076c9b", optional = true }
+cfg-if = { workspace = true }
+cpumask = { version = "0.1", optional = true }
+crate_interface = { version = "0.1", optional = true }
+extern-trait = { version = "0.2", optional = true }
+futures = { workspace = true, optional = true }
+kernel_guard = { workspace = true, optional = true }
+kspin = { workspace = true, optional = true }
+lazyinit = { workspace = true, optional = true }
+log = { workspace = true }
+memory_addr = { workspace = true, optional = true }
+percpu = { workspace = true, optional = true }
+pin-project = { version = "1.1", optional = true }
+spin = { workspace = true, optional = true }
+weak-map = { version = "0.1", optional = true }
+
+[dev-dependencies]
+axhal = { workspace = true, features = ["fp-simd"] }
+axtask = { workspace = true, features = ["test", "multitask"] }
+rand = { workspace = true }

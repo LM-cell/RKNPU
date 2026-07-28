@@ -1,0 +1,15 @@
+[book]
+title = "StarryOS-pulsar-development"
+authors = ["Dirinkbottle"]
+language = "zh"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output]
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+fold.enable = true
+fold.level = 0

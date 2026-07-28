@@ -1,0 +1,4 @@
+[system.Custom]
+build_cmd = "make aarch64-build"
+elf_path = "starryos_aarch.elf"
+to_bin = true
