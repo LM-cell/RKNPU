@@ -1,0 +1,292 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>3月技术报告-周雨 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item "><a href="../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item "><a href="../develop_log/第三周/log.html"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item expanded "><a href="../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item expanded "><a href="../develop_log/3月技术报告-周雨.html" class="active"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item "><a href="../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item "><a href="../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/registers/pc.html"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item "><a href="../documents/registers/cna.html"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item "><a href="../documents/ioctl-protocol.html"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item "><a href="../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknnlibso/rknn-api.html"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="3月技术报告-周雨"><a class="header" href="#3月技术报告-周雨">3月技术报告-周雨</a></h1>
+<h2 id="目标与问题"><a class="header" href="#目标与问题">目标与问题</a></h2>
+<h3 id="主要目标"><a class="header" href="#主要目标">主要目标</a></h3>
+<ol>
+<li>将比赛版本中的 NPU 驱动和 aarch64 动态平台配置迁回 StarryOS 主线，先验证主线环境能不能真正承载 RKNPU 驱动，而不是一直停留在比赛分支上单独维护。</li>
+<li>将原来一次性跑完整个 submit 的同步提交路径，改造成在 task 完成边界主动让出的协作式调度路径，让多个进程在共享 NPU 时有明确的切换点。</li>
+<li>在驱动工作逐步稳定之后，继续往上层工具链推进，探索从带标注的 C 代码自动生成 RKNPU 调用代码，减少手工拼装任务描述符和提交流程的工作量。</li>
+</ol>
+<h3 id="主要问题"><a class="header" href="#主要问题">主要问题</a></h3>
+<ol>
+<li>主线移植后虽然系统能够启动，NPU 三核中断也能注册成功，但目前平台适配层还有一些问题，实际调用 NPU 时会出现卡死。这个问题我还在继续排查，也说明主线环境离稳定开发还有一段距离。</li>
+<li>更细粒度的调度与状态恢复并不只是软件设计问题。我在实验过程中已经明显碰到 RKNPU 的硬件边界。基于目前已经能稳定工作的单 task 粒度，我也认为没有必要继续追求任意时刻的调度，这件事现在看起来性能收益和工程收益都不大。</li>
+<li>自动代码生成工具虽然已经跑通了 matmul 的最小闭环，但目前识别和生成能力都还非常有限</li>
+</ol>
+<h2 id="方案或思路"><a class="header" href="#方案或思路">方案或思路</a></h2>
+<p>面对这些问题，我在 3 月的思路比 2 月更聚焦一些。2 月更多是在补驱动能力，3 月开始，我更在意这些能力能不能放回主线、能不能被调度，以及在确认硬件边界之后，哪些事情值得继续做，哪些事情应该及时收口。</p>
+<ol>
+<li>
+<p><strong>将NPU驱动从比赛版本移植回主线</strong></p>
+<p>我是先把比赛版本上的 NPU 驱动和平台适配层移植回了主线，然后在实际使用NPU驱动时会导致系统卡死，目前问题正在排查中</p>
+</li>
+<li>
+<p><strong>从单线程任务独占改为多线程task step 协作式调度</strong></p>
+<p>3 月中期我花了一段时间重新想调度模型。当时我甚至考虑过把 NPU 做成类似 FPU 的协处理器，同时尽量把 ioctl 路径收得很薄。我往下做时，我是先把最重要的部分抽出来：不要再让一个 submit 一次性独占 NPU 到结束，而是把提交拆成 step，每次只推进一个当前 task-batch，在 IRQ 边界返回，由外层调度器决定谁继续。后面的工作重点也不是把切换做得越来越激进，而是继续把驱动层这套 task step 调度机制做扎实、做到能稳定的跑为止。</p>
+</li>
+<li>
+<p><strong>先用实验确认硬件边界，再主动收敛模型</strong></p>
+<p>我不想在还没确认硬件边界的时候，就先堆一套很重的软件上下文模型。所以 3 月里我专门对寄存器快照、恢复镜像、算子级中断和 checkpoint（也就是执行中途保存状态，之后再恢复继续跑）做了实验。实验结果如果不支持，我就直接暂时搁置这条路，而不是继续维护一套看起来完整、实际上很难跑通的设计，而且实验看来在如果要做到任意时刻打断和恢复的话必定需要NPU硬件本身支持checkpoint的一种恢复机制。现在看下来，在单 task 粒度已经能稳定切换的前提下，没有必要再把目标扩展到任意时刻调度，继续往那个方向做，开销会更高，收益却不明显。</p>
+</li>
+<li>
+<p><strong>向工具链上移，减少手工写驱动调用</strong></p>
+<p>到 3 月后半段，我开始把目光往上移，不再只盯着驱动内部。具体做法是基于 Clang front-end，也就是利用 Clang 编译器前端的语法分析能力，对带有显式标注的 C 代码做识别，然后尝试自动生成对应的 RKNPU 调用代码。第一步只做标准 matmul，先把最小闭环跑通。</p>
+</li>
+</ol>
+<h2 id="实现情况"><a class="header" href="#实现情况">实现情况</a></h2>
+<h3 id="1-npu驱动移植回-starryos-主线并完成基础验证"><a class="header" href="#1-npu驱动移植回-starryos-主线并完成基础验证">1. NPU驱动移植回 StarryOS 主线并完成基础验证</a></h3>
+<p>3 月一开始，我做的不是新功能，而是把比赛版本上的 NPU 驱动和 aarch64 动态平台配置迁回 StarryOS 主线。</p>
+<p>实际验证结果比我预想得好一些。系统能够正常启动，NPU 三核中断注册也成功了。</p>
+<p>问题：目前平台适配层还有一些问题，实际调用 NPU 时会出现卡死，具体原因我还在继续排查。</p>
+<h3 id="2-npu驱动中任务提交路径改造成单-task-边界协作式调度"><a class="header" href="#2-npu驱动中任务提交路径改造成单-task-边界协作式调度">2. npu驱动中任务提交路径改造成单 task 边界协作式调度</a></h3>
+<p>这一部分是我 3 月最核心的工作。之前的模型很直接：一次 ioctl 进去，驱动把单个线程提交的整个 submit 从头跑到尾，跑完才返回。这样做实现起来不难，但问题也很明显，单个线程会长时间独占 NPU。只要 submit 足够长，别的线程就只能一直等。</p>
+<p>我后来把这条路径改成了单步推进。具体做法是，在 <code>card1</code> 的提交路径里保留外层 <code>loop + yield_now()</code>，而驱动内部只保留 <code>submit_ioctrl_step_with_owner()</code> 这个 step 入口。这个函数每次最多只推进一个当前 task-batch，然后就在 task 完成后的 IRQ 边界返回。为了让它能重新进入，我把 <code>task_counter</code> 作为唯一恢复游标，下次进入时直接从上次稳定完成的位置继续算，不再另外维护一套复杂的快照。</p>
+<p>驱动内部的状态也一起收窄了。每次 step 下发前，只给参与执行的 core 绑定一个最小的 owner/task 状态，用来记录“这个 core 当前在给谁跑哪个 task，以及最近看到了什么 IRQ”。任务完成后，驱动更新对应 task 的 <code>int_status</code> 和最近一次 IRQ 观测值，然后立刻把 core 槽位清掉。这样做的好处：切换点清楚，状态模型也足够小。</p>
+<p>板端验证能说明这条路是通的。多进程 <code>matmul_multi_process</code> 和混合负载场景已经跑通，submit 不再是一家独占跑完，而是多个 owner 在 task 边界交错推进。这里的切换本质上还是协作式调度，不是任意时刻抢占。它解决的是多个线程怎么共享 NPU，不是怎么把 NPU 做成一个可以像 CPU/FPU 那样随时保存和恢复的通用协处理器。</p>
+<h3 id="3-npu驱动更细粒度调度与状态恢复实验带来的收敛"><a class="header" href="#3-npu驱动更细粒度调度与状态恢复实验带来的收敛">3. NPU驱动更细粒度调度与状态恢复实验带来的收敛</a></h3>
+<p>我一开始其实想得更激进。我不满足于 task 边界调度，还想继续往下压，看看能不能做到更细粒度的切换，甚至尝试类似 checkpoint 的执行中途保存与恢复。为此，我在 IRQ 边界做过 live 寄存器快照、毒值写坏和恢复校验，也专门分析过算子级调度的可能性。</p>
+<p>板端实验给出的反馈并不乐观。我当时观察到过这样的日志：</p>
+<pre><code class="language-text">first_task_shadow_mismatch={ offset=0x100c, expected=0x120, got=0x0 }
+first_task_shadow_mismatch={ offset=0x4058, expected=0xf, got=0x0 }
+</code></pre>
+<p>这说明一个很麻烦的问题：IRQ 虽然已经到了，task 也确实跑完了，但并不是所有 task-window 配置寄存器都会在这个边界上稳定地按提交值读回。也就是说，这个边界对“任务完成”是可靠的，对“完整寄存器状态可恢复”却不是。再往下走，如果把调度边界压到单个算子，中断频率会明显变高，灵活性是提高了，但中断和调度开销也会一起涨上来。更关键的是，当前硬件接口里我没有看到一个能让多个功能部件在同一时刻一致性暂停的机制，而恢复执行也不像 CPU/FPU 那样能从内部断点继续，更像重新触发一次执行，这就带来了任务重放的风险。</p>
+<p>这些实验让我最后收敛得很明确：当前最稳妥的边界，仍然是 task 完成后的 IRQ 边界。所以 3 月我做出的判断不是完整寄存器保存/恢复写不下去，而是这条路在当前硬件边界下不值得继续当主线推进。再往任意时刻调度上做，软件会更复杂，中断和调度开销也会更高，但我现在看不到足够明显的收益。这也是为什么后来我把主线彻底收敛到了task 粒度协作式调度，并开始把精力放回驱动层任务调度本身的完善和优化。</p>
+<h3 id="4-基于-clang-front-end-的-rknpu-代码生成工具原型"><a class="header" href="#4-基于-clang-front-end-的-rknpu-代码生成工具原型">4. 基于 Clang front-end 的 RKNPU 代码生成工具原型</a></h3>
+<p>3 月后半段，我开始结合ai工具做一个基于 Clang front-end 的 RKNPU 代码生成工具。这里的想法很直接：写纯cpu计算的代码，通过手工标注一段代码，让代码生成工具来进行中间的具体的NPU平台侧的代码生成和优化，这样我们我们不用写一行npu库相关的代码 而是让我们的代码生成工具来分析代码生成更优，性能更好的能跑在npu上的代码，这也是当时我想的最贴近让npu当作cpu的一个协处理器在软件层面的一个思路.</p>
+<p>当前的做法是“显式标注 + 前端识别 + 代码生成”。用户先在 C 代码里标出可加速的区域，工具再利用 Clang front-end 对这些区域做语法级分析。目前我已经把标准形态的 matmul 识别跑通，并且能够把识别出的计算区域转换成对应的 RKNPU 任务构造与提交流程，形成一个最小闭环。代码仓库见 <a href="https://github.com/qc-gpu-driver/rknpu_gen">rknpu_gen</a>。</p>
+<p>当然，这一步离“通用自动生成”还差得很远。现在它能说明的，只是标准 matmul 这条链可以走通，不能说明复杂算子、复杂控制流或者更随意的代码风格也都能自动处理。但这一步还是很重要，因为它把我 3 月的工作从“让驱动能跑”往前推到了“让工具帮人用驱动”。这两个方向其实不是一回事。</p>
+<h2 id="下一步的计划建议"><a class="header" href="#下一步的计划建议">下一步的计划/建议</a></h2>
+<ol>
+<li>继续排查和修复 StarryOS 主线下的平台适配问题，重点把当前“调用 NPU 会卡死”的原因定位清楚，让主线环境真正适合稳定调试。</li>
+<li>在现有 task 边界协作式调度已经稳定的前提下，继续完善驱动层的任务调度和优化工作，把队列化、优先级和多任务推进模型做得更规范。</li>
+<li>继续把多进程和混合工作负载测试做得更系统，确认当前 task step 调度在不同负载下的行为和开销，不再把任意时刻寄存器恢复作为当前主线目标。</li>
+<li>最后做一个benchmark来验证我优化前后驱动性能的提升</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../develop_log/2月技术报告-周雨.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../develop_log/4月技术报告-周雨.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../develop_log/2月技术报告-周雨.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../develop_log/4月技术报告-周雨.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>推理 API 参考 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item "><a href="../../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item "><a href="../../develop_log/第三周/log.html"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item "><a href="../../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/3月技术报告-周雨.html"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item expanded "><a href="../../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item "><a href="../../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/registers/pc.html"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item "><a href="../../documents/registers/cna.html"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item "><a href="../../documents/ioctl-protocol.html"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item expanded "><a href="../../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknnlibso/rknn-api.html" class="active"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="推理-api-参考rknn_apih"><a class="header" href="#推理-api-参考rknn_apih">推理 API 参考（rknn_api.h）</a></h1>
+<blockquote>
+<p>来源：<code>test/starrynpu/demo/yolov8/3rdparty/rknpu2/include/rknn_api.h</code>
+以下资料均来着StarryOS或社区收集。大多数暂未经过验证！。</p>
+</blockquote>
+<hr />
+<h2 id="一类型定义"><a class="header" href="#一类型定义">一、类型定义</a></h2>
+<h3 id="11-上下文句柄"><a class="header" href="#11-上下文句柄">1.1 上下文句柄</a></h3>
+<pre><code class="language-c">#ifdef __arm__
+typedef uint32_t rknn_context;
+#else
+typedef uint64_t rknn_context;
+</code></pre>
+<p>所有 API 围绕 <code>rknn_context</code> 句柄操作，内部指向闭源库维护的不透明状态。</p>
+<h3 id="12-错误码"><a class="header" href="#12-错误码">1.2 错误码</a></h3>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">常量</th><th style="text-align: left">值</th><th style="text-align: left">说明</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>RKNN_SUCC</code></td><td style="text-align: left">0</td><td style="text-align: left">成功</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_FAIL</code></td><td style="text-align: left">-1</td><td style="text-align: left">通用失败</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_TIMEOUT</code></td><td style="text-align: left">-2</td><td style="text-align: left">执行超时</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_DEVICE_UNAVAILABLE</code></td><td style="text-align: left">-3</td><td style="text-align: left">设备不可用</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_MALLOC_FAIL</code></td><td style="text-align: left">-4</td><td style="text-align: left">内存分配失败</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_PARAM_INVALID</code></td><td style="text-align: left">-5</td><td style="text-align: left">参数无效</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_MODEL_INVALID</code></td><td style="text-align: left">-6</td><td style="text-align: left">模型无效</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_CTX_INVALID</code></td><td style="text-align: left">-7</td><td style="text-align: left">上下文无效</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_INPUT_INVALID</code></td><td style="text-align: left">-8</td><td style="text-align: left">输入无效</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_OUTPUT_INVALID</code></td><td style="text-align: left">-9</td><td style="text-align: left">输出无效</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_DEVICE_UNMATCH</code></td><td style="text-align: left">-10</td><td style="text-align: left">设备不匹配（需更新 SDK/驱动）</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_INCOMPATILE_PRE_COMPILE_MODEL</code></td><td style="text-align: left">-11</td><td style="text-align: left">预编译模型不兼容</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_INCOMPATILE_OPTIMIZATION_LEVEL_VERSION</code></td><td style="text-align: left">-12</td><td style="text-align: left">优化级别版本不兼容</td></tr>
+<tr><td style="text-align: left"><code>RKNN_ERR_TARGET_PLATFORM_UNMATCH</code></td><td style="text-align: left">-13</td><td style="text-align: left">目标平台不匹配</td></tr>
+</tbody></table>
+</div>
+<h3 id="13-张量类型"><a class="header" href="#13-张量类型">1.3 张量类型</a></h3>
+<pre><code class="language-c">typedef enum _rknn_tensor_type {
+    RKNN_TENSOR_FLOAT32 = 0,
+    RKNN_TENSOR_FLOAT16,      // 1
+    RKNN_TENSOR_INT8,         // 2
+    RKNN_TENSOR_UINT8,        // 3
+    RKNN_TENSOR_INT16,        // 4
+    RKNN_TENSOR_UINT16,       // 5
+    RKNN_TENSOR_INT32,        // 6
+    RKNN_TENSOR_UINT32,       // 7
+    RKNN_TENSOR_INT64,        // 8
+    RKNN_TENSOR_BOOL,         // 9
+    RKNN_TENSOR_INT4,         // 10
+    RKNN_TENSOR_BFLOAT16,     // 11
+} rknn_tensor_type;
+</code></pre>
+<h3 id="14-量化类型"><a class="header" href="#14-量化类型">1.4 量化类型</a></h3>
+<pre><code class="language-c">typedef enum _rknn_tensor_qnt_type {
+    RKNN_TENSOR_QNT_NONE = 0,              // 无量化
+    RKNN_TENSOR_QNT_DFP,                   // 动态定点（fractional length）
+    RKNN_TENSOR_QNT_AFFINE_ASYMMETRIC,     // 非对称仿射（zero_point + scale）
+} rknn_tensor_qnt_type;
+</code></pre>
+<h3 id="15-数据格式"><a class="header" href="#15-数据格式">1.5 数据格式</a></h3>
+<pre><code class="language-c">typedef enum _rknn_tensor_format {
+    RKNN_TENSOR_NCHW = 0,
+    RKNN_TENSOR_NHWC,
+    RKNN_TENSOR_NC1HWC2,    // NPU 原生格式
+    RKNN_TENSOR_UNDEFINED,
+} rknn_tensor_format;
+</code></pre>
+<h3 id="16-核心掩码"><a class="header" href="#16-核心掩码">1.6 核心掩码</a></h3>
+<pre><code class="language-c">typedef enum _rknn_core_mask {
+    RKNN_NPU_CORE_AUTO   = 0,       // 自动选择
+    RKNN_NPU_CORE_0      = 1,       // 核心 0
+    RKNN_NPU_CORE_1      = 2,       // 核心 1
+    RKNN_NPU_CORE_2      = 4,       // 核心 2
+    RKNN_NPU_CORE_0_1    = 3,       // 核心 0+1 联合
+    RKNN_NPU_CORE_0_1_2  = 7,       // 三核联合
+    RKNN_NPU_CORE_ALL    = 0xffff,  // 平台自动选择多核
+} rknn_core_mask;
+</code></pre>
+<h3 id="17-初始化标志"><a class="header" href="#17-初始化标志">1.7 初始化标志</a></h3>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">标志</th><th style="text-align: left">值</th><th style="text-align: left">说明</th><th style="text-align: left">逆向推断的内部行为</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>RKNN_FLAG_PRIOR_HIGH</code></td><td style="text-align: left">0x0</td><td style="text-align: left">高优先级（默认）</td><td style="text-align: left">设置 <code>nice -19</code></td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_PRIOR_MEDIUM</code></td><td style="text-align: left">0x1</td><td style="text-align: left">中优先级</td><td style="text-align: left">—</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_PRIOR_LOW</code></td><td style="text-align: left">0x2</td><td style="text-align: left">低优先级</td><td style="text-align: left">—</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_ASYNC_MASK</code></td><td style="text-align: left">0x4</td><td style="text-align: left">异步模式</td><td style="text-align: left"><code>rknn_outputs_get</code> 返回上一帧结果</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_COLLECT_PERF_MASK</code></td><td style="text-align: left">0x8</td><td style="text-align: left">性能采集</td><td style="text-align: left">启用逐层计时，降低帧率</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_MEM_ALLOC_OUTSIDE</code></td><td style="text-align: left">0x10</td><td style="text-align: left">外部内存分配</td><td style="text-align: left">用户负责分配 weight/internal/IO 内存</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_SHARE_WEIGHT_MEM</code></td><td style="text-align: left">0x20</td><td style="text-align: left">权重共享</td><td style="text-align: left">多上下文共享同一权重内存</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_FENCE_IN_OUTSIDE</code></td><td style="text-align: left">0x40</td><td style="text-align: left">外部输入 fence</td><td style="text-align: left">传入 DMA fence fd</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_FENCE_OUT_OUTSIDE</code></td><td style="text-align: left">0x80</td><td style="text-align: left">外部输出 fence</td><td style="text-align: left">获取 DMA fence fd</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_COLLECT_MODEL_INFO_ONLY</code></td><td style="text-align: left">0x100</td><td style="text-align: left">仅采集模型信息</td><td style="text-align: left">不实际加载，仅查询 weight/internal 大小</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_INTERNAL_ALLOC_OUTSIDE</code></td><td style="text-align: left">0x200</td><td style="text-align: left">外部分配内部内存</td><td style="text-align: left">—</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_EXECUTE_FALLBACK_PRIOR_DEVICE_GPU</code></td><td style="text-align: left">0x400</td><td style="text-align: left">GPU 回退</td><td style="text-align: left">NPU 不支持的算子回退 GPU（OpenCL）</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_ENABLE_SRAM</code></td><td style="text-align: left">0x800</td><td style="text-align: left">启用 SRAM</td><td style="text-align: left">尝试在 SRAM 分配缓冲</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_SHARE_SRAM</code></td><td style="text-align: left">0x1000</td><td style="text-align: left">共享 SRAM</td><td style="text-align: left">多上下文共享 SRAM</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_DISABLE_PROC_HIGH_PRIORITY</code></td><td style="text-align: left">0x2000</td><td style="text-align: left">禁用高优先级</td><td style="text-align: left">不设置 <code>nice -19</code></td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_DISABLE_FLUSH_INPUT_MEM_CACHE</code></td><td style="text-align: left">0x4000</td><td style="text-align: left">禁用输入 cache flush</td><td style="text-align: left">用户自行保证 cache 一致性</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_DISABLE_FLUSH_OUTPUT_MEM_CACHE</code></td><td style="text-align: left">0x8000</td><td style="text-align: left">禁用输出 cache flush</td><td style="text-align: left">输出由 GPU/RGA 消费时使用</td></tr>
+<tr><td style="text-align: left"><code>RKNN_FLAG_MODEL_BUFFER_ZERO_COPY</code></td><td style="text-align: left">0x10000</td><td style="text-align: left">模型缓冲零拷贝</td><td style="text-align: left">模型数据由 NPU 直接访问</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="二核心结构体"><a class="header" href="#二核心结构体">二、核心结构体</a></h2>
+<h3 id="21-张量属性-rknn_tensor_attr"><a class="header" href="#21-张量属性-rknn_tensor_attr">2.1 张量属性 <code>rknn_tensor_attr</code></a></h3>
+<pre><code class="language-c">typedef struct _rknn_tensor_attr {
+    uint32_t index;                        // 输入/输出索引
+    uint32_t n_dims;                       // 维度数
+    uint32_t dims[RKNN_MAX_DIMS];          // 维度数组（最多 16 维）
+    char     name[RKNN_MAX_NAME_LEN];      // 张量名（最长 256）
+    uint32_t n_elems;                      // 元素总数
+    uint32_t size;                         // 字节大小
+    rknn_tensor_format fmt;                // 数据格式（NCHW/NHWC/NC1HWC2）
+    rknn_tensor_type   type;               // 数据类型
+    rknn_tensor_qnt_type qnt_type;         // 量化类型
+    int8_t   fl;                           // DFP 小数位长度
+    int32_t  zp;                           // 仿射量化零点
+    float    scale;                        // 仿射量化缩放因子
+    uint32_t w_stride;                     // 宽度方向步长（只读）
+    uint32_t size_with_stride;             // 含步长的字节大小
+    uint8_t  pass_through;                 // 直通模式标志
+    uint32_t h_stride;                     // 高度方向步长（只写）
+} rknn_tensor_attr;
+</code></pre>
+<h3 id="22-张量内存-rknn_tensor_mem"><a class="header" href="#22-张量内存-rknn_tensor_mem">2.2 张量内存 <code>rknn_tensor_mem</code></a></h3>
+<pre><code class="language-c">typedef struct _rknn_tensor_memory {
+    void*    virt_addr;     // 虚拟地址
+    uint64_t phys_addr;     // 物理地址
+    int32_t  fd;            // DMA buffer fd
+    int32_t  offset;        // 内存偏移
+    uint32_t size;          // 缓冲大小
+    uint32_t flags;         // 标志
+    void*    priv_data;     // 私有数据（闭源库内部使用）
+} rknn_tensor_mem;
+</code></pre>
+<p><strong>逆向推断</strong>：<code>priv_data</code> 内部指向闭源库维护的 <code>rknpu_mem_create</code> 返回的 <code>obj_addr</code>，用于后续 <code>mem_destroy</code> 和 <code>mem_sync</code> 操作。</p>
+<h3 id="23-查询命令-rknn_query_cmd"><a class="header" href="#23-查询命令-rknn_query_cmd">2.3 查询命令 <code>rknn_query_cmd</code></a></h3>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">命令</th><th style="text-align: left">值</th><th style="text-align: left">返回结构体</th><th style="text-align: left">说明</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>RKNN_QUERY_IN_OUT_NUM</code></td><td style="text-align: left">0</td><td style="text-align: left"><code>rknn_input_output_num</code></td><td style="text-align: left">输入/输出数量</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_INPUT_ATTR</code></td><td style="text-align: left">1</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">输入张量属性</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_OUTPUT_ATTR</code></td><td style="text-align: left">2</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">输出张量属性</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_PERF_DETAIL</code></td><td style="text-align: left">3</td><td style="text-align: left"><code>rknn_perf_detail</code></td><td style="text-align: left">逐层性能（需 PERF_MASK）</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_PERF_RUN</code></td><td style="text-align: left">4</td><td style="text-align: left"><code>rknn_perf_run</code></td><td style="text-align: left">推理总耗时</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_SDK_VERSION</code></td><td style="text-align: left">5</td><td style="text-align: left"><code>rknn_sdk_version</code></td><td style="text-align: left">SDK/驱动版本</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_MEM_SIZE</code></td><td style="text-align: left">6</td><td style="text-align: left"><code>rknn_mem_size</code></td><td style="text-align: left">权重/内部内存大小</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_CUSTOM_STRING</code></td><td style="text-align: left">7</td><td style="text-align: left"><code>rknn_custom_string</code></td><td style="text-align: left">自定义字符串</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_NATIVE_INPUT_ATTR</code></td><td style="text-align: left">8</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">原生输入属性（NC1HWC2）</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_NATIVE_OUTPUT_ATTR</code></td><td style="text-align: left">9</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">原生输出属性</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_DEVICE_MEM_INFO</code></td><td style="text-align: left">12</td><td style="text-align: left">—</td><td style="text-align: left">设备内存信息</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_INPUT_DYNAMIC_RANGE</code></td><td style="text-align: left">13</td><td style="text-align: left"><code>rknn_input_range</code></td><td style="text-align: left">动态 shape 范围</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_CURRENT_INPUT_ATTR</code></td><td style="text-align: left">14</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">当前输入 shape（动态模型）</td></tr>
+<tr><td style="text-align: left"><code>RKNN_QUERY_CURRENT_OUTPUT_ATTR</code></td><td style="text-align: left">15</td><td style="text-align: left"><code>rknn_tensor_attr</code></td><td style="text-align: left">当前输出 shape（动态模型）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="三函数签名与逆向还原"><a class="header" href="#三函数签名与逆向还原">三、函数签名与逆向还原</a></h2>
+<h3 id="31-生命周期管理"><a class="header" href="#31-生命周期管理">3.1 生命周期管理</a></h3>
+<h4 id="rknn_init"><a class="header" href="#rknn_init"><code>rknn_init</code></a></h4>
+<pre><code class="language-c">int rknn_init(rknn_context* context, void* model, uint32_t size, uint32_t flag, rknn_init_extend* extend);
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">参数</th><th style="text-align: left">说明</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>context</code></td><td style="text-align: left">[out] 上下文句柄指针</td></tr>
+<tr><td style="text-align: left"><code>model</code></td><td style="text-align: left"><code>size &gt; 0</code> 时为模型数据指针；<code>size = 0</code> 时为模型文件路径</td></tr>
+<tr><td style="text-align: left"><code>size</code></td><td style="text-align: left">模型数据大小（0 表示从文件加载）</td></tr>
+<tr><td style="text-align: left"><code>flag</code></td><td style="text-align: left">初始化标志组合（见 1.7）</td></tr>
+<tr><td style="text-align: left"><code>extend</code></td><td style="text-align: left">扩展信息（可选，含 <code>real_model_offset</code>、<code>model_buffer_fd</code> 等）</td></tr>
+</tbody></table>
+</div>
+<p><strong>逆向还原的内部流程</strong>：</p>
+<pre><code>rknn_init()
+├── 1. 打开 /dev/dri/card* 或 /dev/rknpu（获取 fd）
+├── 2. ioctl(ACTION, RKNPU_GET_HW_VERSION) → 检查硬件版本
+├── 3. 解析 .rknn 模型文件头
+│   ├── 提取网络拓扑（层数、连接关系）
+│   ├── 提取权重数据
+│   └── 提取预编译命令流（如果是 pre-compile 模型）
+├── 4. ioctl(MEM_CREATE) × N → 分配权重/内部/IO 内存
+│   ├── 权重内存（RKNPU_MEM_KERNEL_MAPPING）
+│   ├── 内部中间缓冲
+│   └── 命令流缓冲（regcmd）
+├── 5. ioctl(MEM_MAP) + mmap() → 映射到用户空间
+├── 6. 将权重数据拷贝到 DMA 内存（转换为 native layout）
+├── 7. 编译模型 → 生成寄存器命令流
+│   ├── 为每层生成 NPUOP 指令序列
+│   ├── 计算 CBUF bank 分配
+│   └── 生成 Task 数组
+├── 8. 如果 flag &amp; RKNN_FLAG_PRIOR_HIGH → ioctl(ACTION, RKNPU_SET_PROC_NICE)
+└── 9. 返回 context 句柄
+</code></pre>
+<h4 id="rknn_destroy"><a class="header" href="#rknn_destroy"><code>rknn_destroy</code></a></h4>
+<pre><code class="language-c">int rknn_destroy(rknn_context context);
+</code></pre>
+<p><strong>逆向还原</strong>：</p>
+<pre><code>rknn_destroy()
+├── 1. 释放所有 Task 数组内存
+├── 2. munmap() + ioctl(MEM_DESTROY) × N → 释放所有 DMA 内存
+├── 3. close(drm_fd)
+└── 4. 释放上下文结构体
+</code></pre>
+<h4 id="rknn_dup_context"><a class="header" href="#rknn_dup_context"><code>rknn_dup_context</code></a></h4>
+<pre><code class="language-c">int rknn_dup_context(rknn_context* context_in, rknn_context* context_out);
+</code></pre>
+<p>复制上下文，新上下文与原上下文共享权重内存（<code>RKNN_FLAG_SHARE_WEIGHT_MEM</code> 语义）。</p>
+<hr />
+<h3 id="32-推理流程"><a class="header" href="#32-推理流程">3.2 推理流程</a></h3>
+<h4 id="rknn_inputs_set"><a class="header" href="#rknn_inputs_set"><code>rknn_inputs_set</code></a></h4>
+<pre><code class="language-c">int rknn_inputs_set(rknn_context context, uint32_t n_inputs, rknn_input inputs[]);
+</code></pre>
+<p><strong>逆向还原</strong>：</p>
+<pre><code>rknn_inputs_set()
+├── 1. 遍历 inputs[]
+│   ├── 如果 pass_through == TRUE → 直接拷贝到输入 DMA 内存
+│   └── 如果 pass_through == FALSE →
+│       ├── 格式转换（NHWC → NCHW 或 NC1HWC2）
+│       ├── 类型转换（FP32 → INT8/FP16，应用 scale/zp）
+│       └── 拷贝到输入 DMA 内存
+└── 2. ioctl(MEM_SYNC, SYNC_TO_DEVICE) → flush cache
+</code></pre>
+<h4 id="rknn_run"><a class="header" href="#rknn_run"><code>rknn_run</code></a></h4>
+<pre><code class="language-c">int rknn_run(rknn_context context, rknn_run_extend* extend);
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">参数</th><th style="text-align: left">说明</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>extend-&gt;frame_id</code></td><td style="text-align: left">[out] 当前帧 ID</td></tr>
+<tr><td style="text-align: left"><code>extend-&gt;non_block</code></td><td style="text-align: left">0=阻塞，1=非阻塞</td></tr>
+<tr><td style="text-align: left"><code>extend-&gt;timeout_ms</code></td><td style="text-align: left">阻塞模式超时（毫秒）</td></tr>
+<tr><td style="text-align: left"><code>extend-&gt;fence_fd</code></td><td style="text-align: left">外部 fence fd</td></tr>
+</tbody></table>
+</div>
+<p><strong>逆向还原</strong>（核心路径）：</p>
+<pre><code>rknn_run()
+├── 1. 构造 rknpu_submit 结构体
+│   ├── flags = RKNPU_JOB_PC | RKNPU_JOB_BLOCK（或 NONBLOCK）| RKNPU_JOB_PINGPONG
+│   ├── task_obj_addr = tasks DMA 对象地址
+│   ├── core_mask = 根据 rknn_set_core_mask() 设置
+│   ├── subcore_task[] = 根据多核切分策略填充
+│   └── timeout = extend-&gt;timeout_ms 或默认值
+├── 2. ioctl(DRM_IOCTL_RKNPU_SUBMIT, &amp;submit)
+│   └── 内核驱动：
+│       ├── 分配 job → 调度到核心
+│       ├── 写 PC 寄存器（base_addr, amount, task_control, op_enable）
+│       ├── 等待中断
+│       └── 写回 task[].int_status
+└── 3. 如果阻塞模式 → 等待 ioctl 返回
+    如果非阻塞 → 立即返回，后续 rknn_wait() 或 rknn_outputs_get() 等待
+</code></pre>
+<h4 id="rknn_wait"><a class="header" href="#rknn_wait"><code>rknn_wait</code></a></h4>
+<pre><code class="language-c">int rknn_wait(rknn_context context, rknn_run_extend* extend);
+</code></pre>
+<p>等待非阻塞推理完成。内部轮询或等待 fence 信号。</p>
+<h4 id="rknn_outputs_get"><a class="header" href="#rknn_outputs_get"><code>rknn_outputs_get</code></a></h4>
+<pre><code class="language-c">int rknn_outputs_get(rknn_context context, uint32_t n_outputs, rknn_output outputs[], rknn_output_extend* extend);
+</code></pre>
+<p><strong>逆向还原</strong>：</p>
+<pre><code>rknn_outputs_get()
+├── 1. 如果异步模式 → 返回上一帧结果（不等待当前帧）
+├── 2. ioctl(MEM_SYNC, SYNC_FROM_DEVICE) → invalidate output cache
+├── 3. 遍历 outputs[]
+│   ├── 如果 want_float == TRUE →
+│   │   ├── 反量化（INT8 → FP32，应用 scale/zp）
+│   │   └── 格式转换（NC1HWC2 → NCHW/NHWC）
+│   ├── 如果 is_prealloc == TRUE → 拷贝到用户提供的 buf
+│   └── 如果 is_prealloc == FALSE → 分配 buf 并拷贝
+└── 4. extend-&gt;frame_id = 当前帧 ID
+</code></pre>
+<h4 id="rknn_outputs_release"><a class="header" href="#rknn_outputs_release"><code>rknn_outputs_release</code></a></h4>
+<pre><code class="language-c">int rknn_outputs_release(rknn_context context, uint32_t n_ouputs, rknn_output outputs[]);
+</code></pre>
+<p>释放 <code>rknn_outputs_get</code> 中 <code>is_prealloc == FALSE</code> 时分配的 buf。</p>
+<hr />
+<h3 id="33-查询接口"><a class="header" href="#33-查询接口">3.3 查询接口</a></h3>
+<h4 id="rknn_query"><a class="header" href="#rknn_query"><code>rknn_query</code></a></h4>
+<pre><code class="language-c">int rknn_query(rknn_context context, rknn_query_cmd cmd, void* info, uint32_t size);
+</code></pre>
+<p>通用查询接口。<code>info</code> 指向对应结构体，<code>size</code> 为结构体大小。</p>
+<p><strong>关键查询结构体</strong>：</p>
+<pre><code class="language-c">typedef struct _rknn_input_output_num {
+    uint32_t n_input;
+    uint32_t n_output;
+} rknn_input_output_num;
+
+typedef struct _rknn_perf_detail {
+    char*    perf_data;      // 性能数据字符串（闭源库内部分配）
+    uint64_t data_len;
+} rknn_perf_detail;
+
+typedef struct _rknn_perf_run {
+    int64_t run_duration;    // 推理耗时（微秒）
+} rknn_perf_run;
+
+typedef struct _rknn_sdk_version {
+    char api_version[256];
+    char drv_version[256];
+} rknn_sdk_version;
+
+typedef struct _rknn_mem_size {
+    uint32_t total_weight_size;
+    uint32_t total_internal_size;
+    uint64_t total_dma_allocated_size;
+    uint32_t total_sram_size;
+    uint32_t free_sram_size;
+    uint32_t reserved[10];
+} rknn_mem_size;
+</code></pre>
+<hr />
+<h3 id="34-多核控制"><a class="header" href="#34-多核控制">3.4 多核控制</a></h3>
+<h4 id="rknn_set_core_mask"><a class="header" href="#rknn_set_core_mask"><code>rknn_set_core_mask</code></a></h4>
+<pre><code class="language-c">int rknn_set_core_mask(rknn_context context, rknn_core_mask core_mask);
+</code></pre>
+<p><strong>逆向推断</strong>：设置后续 <code>rknn_run</code> 提交时 <code>rknpu_submit.core_mask</code> 的值。对于联合核心模式（<code>CORE_0_1</code>、<code>CORE_0_1_2</code>），闭源库内部会将 Task 数组切分到 <code>subcore_task[]</code> 中。</p>
+<h4 id="rknn_set_batch_core_num"><a class="header" href="#rknn_set_batch_core_num"><code>rknn_set_batch_core_num</code></a></h4>
+<pre><code class="language-c">int rknn_set_batch_core_num(rknn_context context, int core_num);
+</code></pre>
+<p>设置批量推理时使用的核心数。</p>
+<hr />
+<h3 id="35-动态-shape"><a class="header" href="#35-动态-shape">3.5 动态 Shape</a></h3>
+<h4 id="rknn_set_input_shapes"><a class="header" href="#rknn_set_input_shapes"><code>rknn_set_input_shapes</code></a></h4>
+<pre><code class="language-c">int rknn_set_input_shapes(rknn_context ctx, uint32_t n_inputs, rknn_tensor_attr attr[]);
+</code></pre>
+<p>设置所有输入张量的 shape。仅对动态 shape 模型有效。调用后闭源库内部会重新编译命令流。</p>
+<h4 id="rknn_set_input_shape已废弃"><a class="header" href="#rknn_set_input_shape已废弃"><code>rknn_set_input_shape</code>（已废弃）</a></h4>
+<pre><code class="language-c">int rknn_set_input_shape(rknn_context ctx, rknn_tensor_attr* attr);
+</code></pre>
+<hr />
+<h3 id="36-扩展结构体"><a class="header" href="#36-扩展结构体">3.6 扩展结构体</a></h3>
+<h4 id="rknn_init_extend"><a class="header" href="#rknn_init_extend"><code>rknn_init_extend</code></a></h4>
+<pre><code class="language-c">typedef struct _rknn_init_extend {
+    rknn_context ctx;
+    int32_t      real_model_offset;    // 模型文件内偏移（零拷贝模式）
+    uint32_t     real_model_size;      // 模型实际大小
+    int32_t      model_buffer_fd;      // 模型缓冲 fd
+    uint32_t     model_buffer_flags;   // 模型缓冲标志
+    uint8_t      reserved[112];
+} rknn_init_extend;
+</code></pre>
+<h4 id="rknn_run_extend"><a class="header" href="#rknn_run_extend"><code>rknn_run_extend</code></a></h4>
+<pre><code class="language-c">typedef struct _rknn_run_extend {
+    uint64_t frame_id;       // [out] 帧 ID
+    int32_t  non_block;      // 0=阻塞，1=非阻塞
+    int32_t  timeout_ms;     // 超时（毫秒）
+    int32_t  fence_fd;       // 外部 fence fd
+} rknn_run_extend;
+</code></pre>
+<h4 id="rknn_output_extend"><a class="header" href="#rknn_output_extend"><code>rknn_output_extend</code></a></h4>
+<pre><code class="language-c">typedef struct _rknn_output_extend {
+    uint64_t frame_id;       // [out] 输出对应的帧 ID
+} rknn_output_extend;
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../documents/rknnlibso/overview.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../documents/rknnlibso/rknn-matmul.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../documents/rknnlibso/overview.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../documents/rknnlibso/rknn-matmul.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

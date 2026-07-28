@@ -1,0 +1,516 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>IOCTL协议与数据结构 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item "><a href="../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item "><a href="../develop_log/第三周/log.html"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item "><a href="../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item "><a href="../develop_log/3月技术报告-周雨.html"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item expanded "><a href="../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item "><a href="../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/registers/pc.html"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item "><a href="../documents/registers/cna.html"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../documents/ioctl-protocol.html" class="active"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item "><a href="../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../documents/rknnlibso/rknn-api.html"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="ioctl-协议与数据结构"><a class="header" href="#ioctl-协议与数据结构">IOCTL 协议与数据结构</a></h1>
+<p>本章整理 RKNPU 驱动的全部 ioctl 命令、传参结构体布局、flags 枚举，以及 <code>mmap(offset)</code> 编码规则。</p>
+<hr />
+<h2 id="1-ioctl-命令表"><a class="header" href="#1-ioctl-命令表">1. IOCTL 命令表</a></h2>
+<p>RKNPU 驱动提供 <strong>6 个 ioctl 命令</strong>，同时定义了两套编号：</p>
+<table>
+<tr>
+<th>命令</th><th>编号</th><th>DRM 路径宏</th><th>非 DRM 路径宏</th><th>方向</th><th>结构体</th><th>功能</th>
+</tr>
+<tr>
+<td><strong>ACTION</strong></td><td><code>0x00</code></td>
+<td><code>DRM_IOCTL_RKNPU_ACTION</code></td>
+<td><code>IOCTL_RKNPU_ACTION</code></td>
+<td>IOWR</td>
+<td><code>rknpu_action</code></td>
+<td>查询/设置：版本、频率、电压、电源、统计、复位等</td>
+</tr>
+<tr>
+<td><strong>SUBMIT</strong></td><td><code>0x01</code></td>
+<td><code>DRM_IOCTL_RKNPU_SUBMIT</code></td>
+<td><code>IOCTL_RKNPU_SUBMIT</code></td>
+<td>IOWR</td>
+<td><code>rknpu_submit</code></td>
+<td>提交 NPU 任务（PC job）</td>
+</tr>
+<tr>
+<td><strong>MEM_CREATE</strong></td><td><code>0x02</code></td>
+<td><code>DRM_IOCTL_RKNPU_MEM_CREATE</code></td>
+<td><code>IOCTL_RKNPU_MEM_CREATE</code></td>
+<td>IOWR</td>
+<td><code>rknpu_mem_create</code></td>
+<td>分配 DMA buffer（GEM 对象）</td>
+</tr>
+<tr>
+<td><strong>MEM_MAP</strong></td><td><code>0x03</code></td>
+<td><code>DRM_IOCTL_RKNPU_MEM_MAP</code></td>
+<td><code>IOCTL_RKNPU_MEM_MAP</code></td>
+<td>IOWR</td>
+<td><code>rknpu_mem_map</code></td>
+<td>获取 mmap 用的 fake offset</td>
+</tr>
+<tr>
+<td><strong>MEM_DESTROY</strong></td><td><code>0x04</code></td>
+<td><code>DRM_IOCTL_RKNPU_MEM_DESTROY</code></td>
+<td><code>IOCTL_RKNPU_MEM_DESTROY</code></td>
+<td>IOWR</td>
+<td><code>rknpu_mem_destroy</code></td>
+<td>释放 DMA buffer</td>
+</tr>
+<tr>
+<td><strong>MEM_SYNC</strong></td><td><code>0x05</code></td>
+<td><code>DRM_IOCTL_RKNPU_MEM_SYNC</code></td>
+<td><code>IOCTL_RKNPU_MEM_SYNC</code></td>
+<td>IOWR</td>
+<td><code>rknpu_mem_sync</code></td>
+<td>Cache 同步（flush / invalidate）</td>
+</tr>
+</table>
+<h3 id="11-两套编号的区别"><a class="header" href="#11-两套编号的区别">1.1 两套编号的区别</a></h3>
+<table>
+<tr><th></th><th>DRM 路径</th><th>非 DRM 路径</th></tr>
+<tr>
+<td><strong>编码方式</strong></td>
+<td><code>DRM_IOWR(DRM_COMMAND_BASE + nr, type)</code></td>
+<td><code>_IOWR('r', nr, type)</code></td>
+</tr>
+<tr>
+<td><strong>设备节点</strong></td>
+<td><code>/dev/dri/cardX</code></td>
+<td><code>/dev/rknpu</code>（如果驱动注册了）</td>
+</tr>
+<tr>
+<td><strong>调用方式</strong></td>
+<td><code>drmIoctl(fd, DRM_IOCTL_RKNPU_*, &arg)</code></td>
+<td><code>ioctl(fd, IOCTL_RKNPU_*, &arg)</code></td>
+</tr>
+<tr>
+<td><strong>闭源库使用</strong></td>
+<td> <code>librknnrt.so</code> 主要走此路径</td>
+<td>备选</td>
+</tr>
+</table>
+<blockquote>
+<p><span style="background:#e3f2fd;padding:1px 4px;border-radius:3px;font-size:0.8em">rknpu-ioctl.h</span> 中 <code>RKNPU_IOC_MAGIC = 'r'</code>，<code>DRM_COMMAND_BASE</code> 来自 <code>&lt;libdrm/drm.h&gt;</code>（通常为 <code>0x40</code>）。</p>
+</blockquote>
+<hr />
+<h2 id="2-结构体布局"><a class="header" href="#2-结构体布局">2. 结构体布局</a></h2>
+<h3 id="21-struct-rknpu_action8-字节"><a class="header" href="#21-struct-rknpu_action8-字节">2.1 <code>struct rknpu_action</code>（8 字节）</a></h3>
+<p>用于 <code>ACTION</code> ioctl，查询/设置各种属性。</p>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>flags</code></td><td>Action 编号（见 §3.4）</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>value</code></td><td>GET 时为返回值，SET 时为输入值</td></tr>
+</table>
+<h3 id="22-struct-rknpu_mem_create40-字节"><a class="header" href="#22-struct-rknpu_mem_create40-字节">2.2 <code>struct rknpu_mem_create</code>（40 字节）</a></h3>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>方向</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>handle</code></td><td>OUT</td><td>GEM 对象句柄（驱动分配）</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>flags</code></td><td>IN</td><td>内存类型 flags（见 §3.1）</td></tr>
+<tr><td><code>0x08</code></td><td>8</td><td><code>__u64</code></td><td><code>size</code></td><td>IN</td><td>申请大小（内部页对齐）</td></tr>
+<tr><td><code>0x10</code></td><td>8</td><td><code>__u64</code></td><td><code>obj_addr</code></td><td>OUT</td><td>内核对象地址（opaque token）</td></tr>
+<tr><td><code>0x18</code></td><td>8</td><td><code>__u64</code></td><td><code>dma_addr</code></td><td>OUT</td><td>设备侧 DMA 地址（IOVA 或物理地址）</td></tr>
+<tr><td><code>0x20</code></td><td>8</td><td><code>__u64</code></td><td><code>sram_size</code></td><td>IN</td><td>可选 SRAM 申请大小</td></tr>
+</table>
+<blockquote>
+<p><span style="background:#fff3e0;padding:1px 4px;border-radius:3px;font-size:0.8em">StarryOS Rust 驱动</span> 扩展了额外字段：<code>iommu_domain_id: i32</code>、<code>core_mask: u32</code>，用于多核/IOMMU 域管理。</p>
+</blockquote>
+<h3 id="23-struct-rknpu_mem_map16-字节"><a class="header" href="#23-struct-rknpu_mem_map16-字节">2.3 <code>struct rknpu_mem_map</code>（16 字节）</a></h3>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>方向</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>handle</code></td><td>IN</td><td>GEM 句柄</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>reserved</code></td><td>—</td><td>64 位对齐填充</td></tr>
+<tr><td><code>0x08</code></td><td>8</td><td><code>__u64</code></td><td><code>offset</code></td><td>OUT</td><td>fake offset，用于 <code>mmap(fd, ..., offset)</code></td></tr>
+</table>
+<h3 id="24-struct-rknpu_mem_destroy16-字节"><a class="header" href="#24-struct-rknpu_mem_destroy16-字节">2.4 <code>struct rknpu_mem_destroy</code>（16 字节）</a></h3>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>方向</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>handle</code></td><td>IN</td><td>GEM 句柄</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>reserved</code></td><td>—</td><td>填充</td></tr>
+<tr><td><code>0x08</code></td><td>8</td><td><code>__u64</code></td><td><code>obj_addr</code></td><td>IN</td><td>内核对象地址</td></tr>
+</table>
+<h3 id="25-struct-rknpu_mem_sync32-字节"><a class="header" href="#25-struct-rknpu_mem_sync32-字节">2.5 <code>struct rknpu_mem_sync</code>（32 字节）</a></h3>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>方向</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>flags</code></td><td>IN</td><td>同步方向（见 §3.2）</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>reserved</code></td><td>—</td><td>填充</td></tr>
+<tr><td><code>0x08</code></td><td>8</td><td><code>__u64</code></td><td><code>obj_addr</code></td><td>IN</td><td>要同步的内核对象地址</td></tr>
+<tr><td><code>0x10</code></td><td>8</td><td><code>__u64</code></td><td><code>offset</code></td><td>IN</td><td>同步起始偏移（字节）</td></tr>
+<tr><td><code>0x18</code></td><td>8</td><td><code>__u64</code></td><td><code>size</code></td><td>IN</td><td>同步区域大小</td></tr>
+</table>
+<h3 id="26-struct-rknpu_task36-字节__packed"><a class="header" href="#26-struct-rknpu_task36-字节__packed">2.6 <code>struct rknpu_task</code>（36 字节，<code>__packed</code>）</a></h3>
+<p>单个任务描述，由 PC 命令流引擎解释执行。</p>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>flags</code></td><td>任务标志</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>op_idx</code></td><td>算子索引</td></tr>
+<tr><td><code>0x08</code></td><td>4</td><td><code>__u32</code></td><td><code>enable_mask</code></td><td>模块使能掩码</td></tr>
+<tr><td><code>0x0C</code></td><td>4</td><td><code>__u32</code></td><td><code>int_mask</code></td><td>期望的完成中断掩码</td></tr>
+<tr><td><code>0x10</code></td><td>4</td><td><code>__u32</code></td><td><code>int_clear</code></td><td>中断清除值</td></tr>
+<tr><td><code>0x14</code></td><td>4</td><td><code>__u32</code></td><td><code>int_status</code></td><td>完成后驱动写回实际中断状态</td></tr>
+<tr><td><code>0x18</code></td><td>4</td><td><code>__u32</code></td><td><code>regcfg_amount</code></td><td>寄存器配置项数量</td></tr>
+<tr><td><code>0x1C</code></td><td>4</td><td><code>__u32</code></td><td><code>regcfg_offset</code></td><td>寄存器配置在命令流中的偏移</td></tr>
+<tr><td><code>0x20</code></td><td>8</td><td><code>__u64</code></td><td><code>regcmd_addr</code></td><td>寄存器命令流 DMA 地址</td></tr>
+</table>
+<blockquote>
+<p><strong><code>__packed</code></strong>：编译器不插入 padding，保证与内核侧布局一致。</p>
+</blockquote>
+<h3 id="27-struct-rknpu_subcore_task8-字节"><a class="header" href="#27-struct-rknpu_subcore_task8-字节">2.7 <code>struct rknpu_subcore_task</code>（8 字节）</a></h3>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>task_start</code></td><td>该子核心的起始 task 索引</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>task_number</code></td><td>该子核心要执行的 task 数量</td></tr>
+</table>
+<h3 id="28-struct-rknpu_submit96-字节"><a class="header" href="#28-struct-rknpu_submit96-字节">2.8 <code>struct rknpu_submit</code>（96 字节）</a></h3>
+<p>任务提交主结构体，驱动最核心的入口。</p>
+<table>
+<tr><th>偏移</th><th>大小</th><th>类型</th><th>字段</th><th>说明</th></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>__u32</code></td><td><code>flags</code></td><td>Job 模式（见 §3.3）</td></tr>
+<tr><td><code>0x04</code></td><td>4</td><td><code>__u32</code></td><td><code>timeout</code></td><td>超时时间（ms）</td></tr>
+<tr><td><code>0x08</code></td><td>4</td><td><code>__u32</code></td><td><code>task_start</code></td><td>全局起始 task 索引</td></tr>
+<tr><td><code>0x0C</code></td><td>4</td><td><code>__u32</code></td><td><code>task_number</code></td><td>全局 task 数量</td></tr>
+<tr><td><code>0x10</code></td><td>4</td><td><code>__u32</code></td><td><code>task_counter</code></td><td>计数/序列号</td></tr>
+<tr><td><code>0x14</code></td><td>4</td><td><code>__s32</code></td><td><code>priority</code></td><td>调度优先级</td></tr>
+<tr><td><code>0x18</code></td><td>8</td><td><code>__u64</code></td><td><code>task_obj_addr</code></td><td>task 数组的内核对象地址</td></tr>
+<tr><td><code>0x20</code></td><td>8</td><td><code>__u64</code></td><td><code>regcfg_obj_addr</code></td><td>寄存器配置对象地址</td></tr>
+<tr><td><code>0x28</code></td><td>8</td><td><code>__u64</code></td><td><code>task_base_addr</code></td><td>task 基址（设备侧）</td></tr>
+<tr><td><code>0x30</code></td><td>8</td><td><code>__u64</code></td><td><code>user_data</code></td><td>可选用户数据（透传/调试）</td></tr>
+<tr><td><code>0x38</code></td><td>4</td><td><code>__u32</code></td><td><code>core_mask</code></td><td>核心选择掩码（bit0=core0, bit1=core1, bit2=core2）</td></tr>
+<tr><td><code>0x3C</code></td><td>4</td><td><code>__s32</code></td><td><code>fence_fd</code></td><td>dma-fence fd（IN: fence_in, OUT: fence_out）</td></tr>
+<tr><td><code>0x40</code></td><td>40</td><td><code>subcore_task[5]</code></td><td><code>subcore_task</code></td><td>5 组子核心任务分配</td></tr>
+</table>
+<blockquote>
+<p><span style="background:#fff3e0;padding:1px 4px;border-radius:3px;font-size:0.8em">StarryOS Rust 驱动</span> 变体：将 <code>regcfg_obj_addr</code> 替换为 <code>iommu_domain_id</code> + <code>reserved</code>，并增加 <code>hw_elapse_time</code> 字段。</p>
+</blockquote>
+<hr />
+<h2 id="3-flags-枚举"><a class="header" href="#3-flags-枚举">3. Flags 枚举</a></h2>
+<h3 id="31-enum-e_rknpu_mem_type内存类型位掩码"><a class="header" href="#31-enum-e_rknpu_mem_type内存类型位掩码">3.1 <code>enum e_rknpu_mem_type</code>（内存类型，位掩码）</a></h3>
+<table>
+<tr><th>值</th><th>名称</th><th>说明</th></tr>
+<tr><td><code>0 &lt;&lt; 0</code></td><td><code>CONTIGUOUS</code></td><td>物理连续（默认）</td></tr>
+<tr><td><code>1 &lt;&lt; 0</code></td><td><code>NON_CONTIGUOUS</code></td><td>物理不连续</td></tr>
+<tr><td><code>0 &lt;&lt; 1</code></td><td><code>NON_CACHEABLE</code></td><td>不可缓存（默认）</td></tr>
+<tr><td><code>1 &lt;&lt; 1</code></td><td><code>CACHEABLE</code></td><td>可缓存</td></tr>
+<tr><td><code>1 &lt;&lt; 2</code></td><td><code>WRITE_COMBINE</code></td><td>Write-Combine 映射</td></tr>
+<tr><td><code>1 &lt;&lt; 3</code></td><td><code>KERNEL_MAPPING</code></td><td>内核态映射</td></tr>
+<tr><td><code>1 &lt;&lt; 4</code></td><td><code>IOMMU</code></td><td>IOMMU 映射</td></tr>
+<tr><td><code>1 &lt;&lt; 5</code></td><td><code>ZEROING</code></td><td>分配后清零</td></tr>
+<tr><td><code>1 &lt;&lt; 6</code></td><td><code>SECURE</code></td><td>安全内存</td></tr>
+<tr><td><code>1 &lt;&lt; 7</code></td><td><code>NON_DMA32</code></td><td>不限于 DMA32 区域</td></tr>
+<tr><td><code>1 &lt;&lt; 8</code></td><td><code>TRY_ALLOC_SRAM</code></td><td>尝试分配 SRAM</td></tr>
+</table>
+<p><code>MEM_MASK = 0x1FF</code>（bit0~bit8 的合法组合集）</p>
+<h3 id="32-enum-e_rknpu_mem_sync_modecache-同步方向"><a class="header" href="#32-enum-e_rknpu_mem_sync_modecache-同步方向">3.2 <code>enum e_rknpu_mem_sync_mode</code>（Cache 同步方向）</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>值</th><th>名称</th><th>说明</th></tr></thead><tbody>
+<tr><td><code>1 &lt;&lt; 0</code></td><td><code>SYNC_TO_DEVICE</code></td><td>CPU → 设备：flush cache</td></tr>
+<tr><td><code>1 &lt;&lt; 1</code></td><td><code>SYNC_FROM_DEVICE</code></td><td>设备 → CPU：invalidate cache</td></tr>
+</tbody></table>
+</div>
+<h3 id="33-enum-e_rknpu_job_modejob-模式位掩码"><a class="header" href="#33-enum-e_rknpu_job_modejob-模式位掩码">3.3 <code>enum e_rknpu_job_mode</code>（Job 模式，位掩码）</a></h3>
+<table>
+<tr><th>值</th><th>名称</th><th>说明</th></tr>
+<tr><td><code>0 &lt;&lt; 0</code></td><td><code>SLAVE</code></td><td>从模式（默认）</td></tr>
+<tr><td><code>1 &lt;&lt; 0</code></td><td><code>PC</code></td><td>PC（Program Counter）模式</td></tr>
+<tr><td><code>0 &lt;&lt; 1</code></td><td><code>BLOCK</code></td><td>阻塞等待完成（默认）</td></tr>
+<tr><td><code>1 &lt;&lt; 1</code></td><td><code>NONBLOCK</code></td><td>非阻塞返回</td></tr>
+<tr><td><code>1 &lt;&lt; 2</code></td><td><code>PINGPONG</code></td><td>双缓冲/流水模式</td></tr>
+<tr><td><code>1 &lt;&lt; 3</code></td><td><code>FENCE_IN</code></td><td>等待输入 fence</td></tr>
+<tr><td><code>1 &lt;&lt; 4</code></td><td><code>FENCE_OUT</code></td><td>返回输出 fence fd</td></tr>
+</table>
+<h3 id="34-enum-e_rknpu_actionaction-编号"><a class="header" href="#34-enum-e_rknpu_actionaction-编号">3.4 <code>enum e_rknpu_action</code>（Action 编号）</a></h3>
+<table>
+<tr><th>编号</th><th>名称</th><th>方向</th><th>说明</th></tr>
+<tr><td>0</td><td><code>GET_HW_VERSION</code></td><td>GET</td><td>读取硬件版本</td></tr>
+<tr><td>1</td><td><code>GET_DRV_VERSION</code></td><td>GET</td><td>读取驱动版本（编码：major*10000+minor*100+patch）</td></tr>
+<tr><td>2</td><td><code>GET_FREQ</code></td><td>GET</td><td>读取当前频率</td></tr>
+<tr><td>3</td><td><code>SET_FREQ</code></td><td>SET</td><td>设置频率</td></tr>
+<tr><td>4</td><td><code>GET_VOLT</code></td><td>GET</td><td>读取电压</td></tr>
+<tr><td>5</td><td><code>SET_VOLT</code></td><td>SET</td><td>设置电压</td></tr>
+<tr><td>6</td><td><code>ACT_RESET</code></td><td>ACT</td><td>NPU 软复位</td></tr>
+<tr><td>7</td><td><code>GET_BW_PRIORITY</code></td><td>GET</td><td>带宽优先级</td></tr>
+<tr><td>8</td><td><code>SET_BW_PRIORITY</code></td><td>SET</td><td>设置带宽优先级</td></tr>
+<tr><td>9</td><td><code>GET_BW_EXPECT</code></td><td>GET</td><td>期望带宽</td></tr>
+<tr><td>10</td><td><code>SET_BW_EXPECT</code></td><td>SET</td><td>设置期望带宽</td></tr>
+<tr><td>11</td><td><code>GET_BW_TW</code></td><td>GET</td><td>带宽时间窗</td></tr>
+<tr><td>12</td><td><code>SET_BW_TW</code></td><td>SET</td><td>设置带宽时间窗</td></tr>
+<tr><td>13</td><td><code>ACT_CLR_TOTAL_RW_AMOUNT</code></td><td>ACT</td><td>清除读写量统计</td></tr>
+<tr><td>14</td><td><code>GET_DT_WR_AMOUNT</code></td><td>GET</td><td>数据写入量</td></tr>
+<tr><td>15</td><td><code>GET_DT_RD_AMOUNT</code></td><td>GET</td><td>数据读取量</td></tr>
+<tr><td>16</td><td><code>GET_WT_RD_AMOUNT</code></td><td>GET</td><td>权重读取量</td></tr>
+<tr><td>17</td><td><code>GET_TOTAL_RW_AMOUNT</code></td><td>GET</td><td>总读写量</td></tr>
+<tr><td>18</td><td><code>GET_IOMMU_EN</code></td><td>GET</td><td>IOMMU 是否启用</td></tr>
+<tr><td>19</td><td><code>SET_PROC_NICE</code></td><td>SET</td><td>进程优先级</td></tr>
+<tr><td>20</td><td><code>POWER_ON</code></td><td>ACT</td><td>NPU 上电</td></tr>
+<tr><td>21</td><td><code>POWER_OFF</code></td><td>ACT</td><td>NPU 下电</td></tr>
+<tr><td>22</td><td><code>GET_TOTAL_SRAM_SIZE</code></td><td>GET</td><td>SRAM 总大小</td></tr>
+<tr><td>23</td><td><code>GET_FREE_SRAM_SIZE</code></td><td>GET</td><td>SRAM 空闲大小</td></tr>
+<tr style="background:#fff3e0">
+<td>24</td><td><code>GET_IOMMU_DOMAIN_ID</code></td><td>GET</td><td><em>StarryOS 扩展</em></td></tr>
+<tr style="background:#fff3e0">
+<td>25</td><td><code>SET_IOMMU_DOMAIN_ID</code></td><td>SET</td><td><em>StarryOS 扩展</em></td></tr>
+</table>
+<hr />
+<h2 id="4-mmap-规则handle--offset-编码"><a class="header" href="#4-mmap-规则handle--offset-编码">4. mmap 规则（handle → offset 编码）</a></h2>
+<h3 id="41-流程"><a class="header" href="#41-流程">4.1 流程</a></h3>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant U as 用户态
+    participant K as 内核驱动
+
+    U-&gt;&gt;K: ioctl(MEM_CREATE, {size, flags})
+    K--&gt;&gt;U: {handle, obj_addr, dma_addr}
+
+    U-&gt;&gt;K: ioctl(MEM_MAP, {handle})
+    K--&gt;&gt;U: {offset}
+
+    U-&gt;&gt;U: ptr = mmap(fd, size, PROT_RW, MAP_SHARED, fd, offset)
+    Note over U: 现在 ptr 指向 DMA buffer 的用户态映射
+
+    U-&gt;&gt;K: ioctl(MEM_SYNC, {obj_addr, offset=0, size, flags=TO_DEVICE})
+    Note over K: flush CPU cache → 设备可见
+
+    Note over U,K: ... 使用 buffer（填充数据 / 读取结果）...
+
+    U-&gt;&gt;K: ioctl(MEM_DESTROY, {handle, obj_addr})
+    Note over K: 释放 GEM 对象 + DMA 内存
+</code></pre>
+<h3 id="42-offset-编码约定"><a class="header" href="#42-offset-编码约定">4.2 offset 编码约定</a></h3>
+<p><span style="background:#e8f5e9;padding:1px 4px;border-radius:3px;font-size:0.8em">Linux rknpu 驱动</span> 中，<code>MEM_MAP</code> 返回的 <code>offset</code> 是 DRM GEM 的 <strong>fake offset</strong>：</p>
+<ul>
+<li>由 <code>drm_gem_create_mmap_offset()</code> 生成</li>
+<li>编码方式：<code>offset = handle_to_node_offset</code>（DRM 内部维护的映射表）</li>
+<li>用户态拿到 <code>offset</code> 后，传给 <code>mmap()</code> 的最后一个参数</li>
+<li>内核在 <code>drm_gem_mmap()</code> 中根据 offset 查找对应的 GEM 对象，建立页表映射</li>
+</ul>
+<blockquote>
+<p><strong>StarryOS 实现</strong>：由于没有完整 DRM 框架，需要自行维护 handle → 物理页的映射表，并在 <code>sys_mmap</code> 的 <code>DeviceMmap::Physical</code> 路径中完成映射。</p>
+</blockquote>
+<h3 id="43-对齐要求"><a class="header" href="#43-对齐要求">4.3 对齐要求</a></h3>
+<ul>
+<li><code>size</code>：内部页对齐（4KB）</li>
+<li><code>offset</code>：必须页对齐</li>
+<li><code>dma_addr</code>：取决于是否启用 IOMMU
+<ul>
+<li>有 IOMMU：返回 IOVA（设备虚拟地址）</li>
+<li>无 IOMMU：返回物理地址（需物理连续）</li>
+</ul>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../documents/registers/global.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../documents/submit-irq-snapshot-restore.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../documents/registers/global.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../documents/submit-irq-snapshot-restore.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

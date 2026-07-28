@@ -1,0 +1,300 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第三周 - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item expanded "><a href="../../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item expanded "><a href="../../develop_log/第三周/log.html" class="active"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item "><a href="../../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/3月技术报告-周雨.html"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item "><a href="../../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item "><a href="../../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/registers/pc.html"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item "><a href="../../documents/registers/cna.html"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item "><a href="../../documents/ioctl-protocol.html"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-api.html"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第三周开发日志28-214"><a class="header" href="#第三周开发日志28-214">第三周开发日志（2.8-2.14）</a></h1>
+<h2 id="工作总结"><a class="header" href="#工作总结">工作总结</a></h2>
+<ul>
+<li><strong>修复 Axvisor 上 rsext4 文件系统导致的磁盘数据不一致问题</strong> — 客户机写文件后重启出现 "block is free" 错误，定位为 rsext4 缓存未同步，在写操作后增加 <code>sync_to_disk</code> 调用修复 <a href="https://github.com/arceos-hypervisor/axvisor/pull/368"><img src="https://img.shields.io/badge/PR-%23368_merged-8957e5?logo=github" alt="PR #368" /></a></li>
+<li><strong>svd2rust 寄存器库重构</strong> — 基于 svd2rust 工具生成类型安全的寄存器访问库，重构 rknpu 驱动核心，减少手动操作寄存器的出错概率 <a href="../../../drivers/rknpu-regs/"><img src="https://img.shields.io/badge/%F0%9F%93%A6_rknpu--regs-%E5%AF%84%E5%AD%98%E5%99%A8%E5%BA%93-blue" alt="rknpu-regs" /></a> <a href="../../../drivers/rknpu/"><img src="https://img.shields.io/badge/%F0%9F%93%A6_rknpu-NPU%E9%A9%B1%E5%8A%A8-blue" alt="rknpu" /></a></li>
+<li><strong>辅助注释与文档</strong> — 利用 AI 为驱动代码添加详细注释，兼顾学习与开发效率</li>
+<li><strong>基于 WFI 的异步中断处理</strong> — 实现了 NPU 中断的异步等待机制</li>
+</ul>
+<hr />
+<h2 id="修复-axvisor-上-rsext4-文件系统磁盘数据不一致问题"><a class="header" href="#修复-axvisor-上-rsext4-文件系统磁盘数据不一致问题">修复 Axvisor 上 rsext4 文件系统磁盘数据不一致问题</a></h2>
+<blockquote>
+<p><a href="https://github.com/arceos-hypervisor/axvisor/pull/368"><img src="https://img.shields.io/badge/PR-%23368_merged-8957e5?logo=github" alt="PR rgba(51, 95, 136, 1)" /></a></p>
+</blockquote>
+<h3 id="问题"><a class="header" href="#问题">问题</a></h3>
+<ol>
+<li>客户机执行文件写操作后重启，出现 <code>block is free</code>（双重释放，原来没有正确把<code>1</code>写回位图） （位图实际扫描使用的Block和超级块中的Block不一致）错误，磁盘数据损坏</li>
+<li>如果启动的是 Linux 客户机，Linux 在启动过程中会因文件系统完整性校验失败而无法启动</li>
+</ol>
+<h3 id="分析"><a class="header" href="#分析">分析</a></h3>
+<p>Linux 客户机的问题是由于 Axvisor 在启动客户机的最后时刻调用 <code>mount_virtual_fs</code> 时没有刷新文件系统，导致文件系统不一致。Linux 启动时进行文件系统完整性校验，发现不一致后拒绝启动，随后关机导致缓存丢失，最终造成文件系统损坏。</p>
+<p>根源在于 rsext4 为提升运行时性能设计了多级缓存机制，但 Axvisor 在集成 rsext4 时，没有在文件写操作后进行数据同步。如果客户机修改文件后立即关机，缓存仍停留在内存中，不可避免地导致磁盘数据不一致。</p>
+<h3 id="解决方案"><a class="header" href="#解决方案">解决方案</a></h3>
+<p>在 rsext4 的 <code>ext4fs.rs</code> 访问层中，对所有写操作调用 <code>sync_to_disk</code> 函数，确保数据及时同步到磁盘。虽然会带来一定的性能损失，但保证了文件系统的一致性。</p>
+<hr />
+<h2 id="开发板环境踩坑"><a class="header" href="#开发板环境踩坑">开发板环境踩坑</a></h2>
+<p>本周在板端遇到了一系列棘手的环境问题，花了不少时间排查：</p>
+<h3 id="u-boot-与启动链问题"><a class="header" href="#u-boot-与启动链问题">U-Boot 与启动链问题</a></h3>
+<ul>
+<li><strong>U-Boot 缺少网卡驱动</strong> — 板载 U-Boot 不支持网络传输，只能通过串口 <code>loady</code> 加载内核，debug 内核每次都要通过串口传内核很慢，每次修改都需要完整烧录StarryOS内核</li>
+<li><strong>SPI 残留环境变量</strong> — 从 OrangePi 官方 Ubuntu 镜像中提取干净的 U-Boot，制作 SPI 镜像刷入开发板。但刷完后发现 SPI 中残留了旧的 U-Boot 环境变量，导致启动失败，只能重新刷回 SPI 镜像</li>
+<li><strong>eMMC 与 SD 卡混淆</strong> — StarryOS 在开发板上扫描到板载 eMMC，但驱动却强制探测 SD 卡。起初误以为使用的是 SD 卡，经分析后确认实际使用的是板载 eMMC</li>
+</ul>
+<h3 id="后续-npu-驱动工作开发路线决策"><a class="header" href="#后续-npu-驱动工作开发路线决策"><strong>后续 NPU 驱动工作开发路线决策</strong></a></h3>
+<p>最初尝试将 NPU 驱动集成到 StarryOS 主线，但 HAL 层架构 <code>axhal</code> 与 <code>somehal</code> 存在冲突，RK3588 平台级代码集成涉及整个架构的大修改。为专注于 NPU 驱动核心功能开发，决定先在 StarryOS NPU 版本上开发，待主要功能完成后再移植回主线。</p>
+<hr />
+<h2 id="svd2rust-寄存器库重构"><a class="header" href="#svd2rust-寄存器库重构">svd2rust 寄存器库重构</a></h2>
+<p>基于 svd2rust 工具重构 rknpu 驱动的寄存器访问层。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 旧方式：手动偏移 + 裸指针
+let status = unsafe { ptr.add(0x20).read_volatile() };
+<span class="boring">}</span></code></pre></pre>
+<h3 id="改进"><a class="header" href="#改进">改进</a></h3>
+<p>通过 svd2rust 从 SVD 描述文件生成类型安全的寄存器库 <code>rknpu-regs</code>，每个寄存器字段都有明确的类型和文档：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 新方式：类型安全 + 自动补全 + 文档
+let status = core.pc().interrupt_status().read().bits();
+core.pc().interrupt_clear().write(|w| unsafe { w.bits(INT_CLEAR_ALL) });
+<span class="boring">}</span></code></pre></pre>
+<h3 id="成果"><a class="header" href="#成果">成果</a></h3>
+<ul>
+<li>生成了完整的寄存器定义，覆盖 PC、CNA、CORE、DPU、PPU、DDMA 等所有功能块</li>
+<li><code>RknpuCore</code> 结构体封装了各功能块的访问方法，提供统一接口</li>
+<li>编译期类型检查杜绝了寄存器偏移量写错、位域宽度搞混等常见错误</li>
+</ul>
+<hr />
+<h2 id="ai-辅助注释"><a class="header" href="#ai-辅助注释">AI 辅助注释</a></h2>
+<p>利用 AI 为 <code>axnpu</code> 驱动代码添加了详细的中文注释(关键函数的调用流程和参数说明)</p>
+<p>既方便自己学习 NPU 硬件细节，也降低了后续开发和他人协作的门槛。</p>
+<hr />
+<h2 id="基于-wfi-的异步中断处理"><a class="header" href="#基于-wfi-的异步中断处理">基于 WFI 的异步中断处理</a></h2>
+<p>实现了 NPU 任务完成的异步等待机制：</p>
+<ul>
+<li>NPU 核心执行完任务后触发中断</li>
+<li>CPU 通过 WFI（Wait For Interrupt）指令进入低功耗等待状态</li>
+<li>中断到来时 CPU 被唤醒，读取中断状态寄存器，清除中断标志</li>
+<li>返回任务执行结果</li>
+</ul>
+<p>这为后续多核并发任务提交打下了基础——每个 NPU 核心可以独立触发中断，CPU 侧可以并行等待多个核心的完成通知。</p>
+<hr />
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../develop_log/第二周/log.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../develop_log/第五周/log.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../develop_log/第二周/log.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../develop_log/第五周/log.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

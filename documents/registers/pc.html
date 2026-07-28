@@ -1,0 +1,397 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>PC - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item "><a href="../../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item "><a href="../../develop_log/第三周/log.html"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item "><a href="../../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/3月技术报告-周雨.html"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item expanded "><a href="../../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item expanded "><a href="../../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/registers/pc.html" class="active"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item "><a href="../../documents/registers/cna.html"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item "><a href="../../documents/ioctl-protocol.html"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-api.html"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="pc-寄存器块program-counter--任务控制器"><a class="header" href="#pc-寄存器块program-counter--任务控制器">PC 寄存器块（Program Counter / 任务控制器）</a></h1>
+<p><strong>基址</strong>：<code>CORE_BASE + 0x0000</code>　｜　<strong>地址范围</strong>：<code>0x0000 ~ 0x0FFF</code></p>
+<blockquote>
+<p>来源：RK3588 TRM §36.4.3 Detail Registers Description</p>
+</blockquote>
+<p>PC 是 NPU 的命令流执行引擎，负责：从 DMA 地址读取寄存器命令流 → 按序写入各功能模块寄存器 → 触发执行 → 产生完成中断。</p>
+<hr />
+<h2 id="rknn_pc_version0x0000"><a class="header" href="#rknn_pc_version0x0000">RKNN_pc_version（0x0000）</a></h2>
+<p>硬件版本寄存器（只读）。驱动通过 <code>version + (version_num &amp; 0xFFFF)</code> 计算完整版本号。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>version</code></td><td style="text-align: left">硬件版本标识</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_version_num0x0004"><a class="header" href="#rknn_pc_version_num0x0004">RKNN_pc_version_num（0x0004）</a></h2>
+<p>硬件版本号寄存器（只读）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>version_num</code></td><td style="text-align: left">硬件版本编号</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_operation_enable0x0008"><a class="header" href="#rknn_pc_operation_enable0x0008">RKNN_pc_operation_enable（0x0008）</a></h2>
+<p>操作使能寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:1</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>op_en</code></td><td style="text-align: left">PC 操作使能。0：禁用 PC 模块；1：使能 PC 模块，为每个 task 取寄存器配置</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_base_address0x0010"><a class="header" href="#rknn_pc_base_address0x0010">RKNN_pc_base_address（0x0010）</a></h2>
+<p>PC 基址寄存器，指定 DMA 指令流所在的内存地址。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pc_source_addr</code></td><td style="text-align: left">PC 基址。DMA 指令流所在的内存地址</td></tr>
+<tr><td style="text-align: center">3:1</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pc_sel</code></td><td style="text-align: left">PC 模式选择。0：PC 模式，通过 AXI DMA 取寄存器配置；1：Slave 模式，通过 AHB 设置寄存器</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_register_amounts0x0014"><a class="header" href="#rknn_pc_register_amounts0x0014">RKNN_pc_register_amounts（0x0014）</a></h2>
+<p>每个 task 需要取的寄存器数量。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pc_data_amount</code></td><td style="text-align: left">数据量。一个 task 需要取的寄存器数量</td></tr>
+</tbody></table>
+</div>
+<p>每条寄存器指令占 64 bit，格式如下：</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">位域</th><th style="text-align: left">含义</th></tr></thead><tbody>
+<tr><td style="text-align: center"><code>[63:48]</code></td><td style="text-align: left">目标模块选择（哪个 block）</td></tr>
+<tr><td style="text-align: center"><code>[47:16]</code></td><td style="text-align: left">寄存器值</td></tr>
+<tr><td style="text-align: center"><code>[15:0]</code></td><td style="text-align: left">各 block 内的偏移地址</td></tr>
+</tbody></table>
+</div>
+<p><strong>模块选择位</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: left">目标模块</th></tr></thead><tbody>
+<tr><td style="text-align: center">56</td><td style="text-align: left">PC</td></tr>
+<tr><td style="text-align: center">57</td><td style="text-align: left">CNA</td></tr>
+<tr><td style="text-align: center">59</td><td style="text-align: left">CORE</td></tr>
+<tr><td style="text-align: center">60</td><td style="text-align: left">DPU</td></tr>
+<tr><td style="text-align: center">61</td><td style="text-align: left">DPU_RDMA</td></tr>
+<tr><td style="text-align: center">62</td><td style="text-align: left">PPU</td></tr>
+<tr><td style="text-align: center">63</td><td style="text-align: left">PPU_RDMA</td></tr>
+<tr><td style="text-align: center">55</td><td style="text-align: left">设置各 block 的 <code>op_en</code></td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>示例</strong>：<code>64'h0081_0000_007f_0008</code> 将设置各 block 的 op_en（CNA, CORE, ..., PPU_RDMA）。</p>
+<p><strong>注意</strong>：<code>op_en</code> 强烈建议放在寄存器列表末尾。在 <code>op_en</code> 之前，必须先设置 <code>64'h0041_xxxx_xxxx_xxxx</code>。</p>
+</blockquote>
+<hr />
+<h2 id="rknn_pc_interrupt_mask0x0020"><a class="header" href="#rknn_pc_interrupt_mask0x0020">RKNN_pc_interrupt_mask（0x0020）</a></h2>
+<p>中断掩码寄存器。置 1 使能对应中断。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x1FFFF</td><td style="text-align: left"><code>int_mask</code></td><td style="text-align: left">中断掩码（见下表）</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: left">中断源</th></tr></thead><tbody>
+<tr><td style="text-align: center">0</td><td style="text-align: left">CNA feature group 0</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: left">CNA feature group 1</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: left">CNA weight group 0</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: left">CNA weight group 1</td></tr>
+<tr><td style="text-align: center">4</td><td style="text-align: left">CNA csc group 0</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: left">CNA csc group 1</td></tr>
+<tr><td style="text-align: center">6</td><td style="text-align: left">CORE group 0</td></tr>
+<tr><td style="text-align: center">7</td><td style="text-align: left">CORE group 1</td></tr>
+<tr><td style="text-align: center">8</td><td style="text-align: left">DPU group 0</td></tr>
+<tr><td style="text-align: center">9</td><td style="text-align: left">DPU group 1</td></tr>
+<tr><td style="text-align: center">10</td><td style="text-align: left">PPU group 0</td></tr>
+<tr><td style="text-align: center">11</td><td style="text-align: left">PPU group 1</td></tr>
+<tr><td style="text-align: center">12</td><td style="text-align: left">DMA read error</td></tr>
+<tr><td style="text-align: center">13</td><td style="text-align: left">DMA write error</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>注意</strong>：在 PC 模式下，int_mask 设置的是最后一个 task 的中断掩码。</p>
+</blockquote>
+<hr />
+<h2 id="rknn_pc_interrupt_clear0x0024"><a class="header" href="#rknn_pc_interrupt_clear0x0024">RKNN_pc_interrupt_clear（0x0024）</a></h2>
+<p>中断清除寄存器。写 1 清除对应中断位。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>int_clr</code></td><td style="text-align: left">中断清除（位定义同 <code>int_mask</code>）</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong><code>INT_CLEAR_ALL = 0x1FFFF</code></strong>（清除 bit0~bit16 全部中断）<span style="background:#e3f2fd;padding:1px 4px;border-radius:3px;font-size:0.8em">rknpu-ioctl.h</span></p>
+</blockquote>
+<hr />
+<h2 id="rknn_pc_interrupt_status0x0028"><a class="header" href="#rknn_pc_interrupt_status0x0028">RKNN_pc_interrupt_status（0x0028）</a></h2>
+<p>中断状态寄存器（经过 mask 后的状态）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>int_st</code></td><td style="text-align: left">中断状态，与 mask 位做 AND（位定义同 <code>int_mask</code>）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_interrupt_raw_status0x002c"><a class="header" href="#rknn_pc_interrupt_raw_status0x002c">RKNN_pc_interrupt_raw_status（0x002C）</a></h2>
+<p>中断原始状态寄存器（未经 mask 的原始状态）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>int_raw_st</code></td><td style="text-align: left">中断原始状态（位定义同 <code>int_mask</code>）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_task_con0x0030"><a class="header" href="#rknn_pc_task_con0x0030">RKNN_pc_task_con（0x0030）</a></h2>
+<p>任务控制寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:14</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">13</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>task_count_clear</code></td><td style="text-align: left">任务计数器清除。清除当前 task 计数器，建议在 task 启动前清除</td></tr>
+<tr><td style="text-align: center">12</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>task_pp_en</code></td><td style="text-align: left">Ping-pong 模式使能。0：关闭，第二组寄存器在第一组 task 完成后才取；1：开启，第二组寄存器在第一组取完后立即开始取</td></tr>
+<tr><td style="text-align: center">11:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>task_number</code></td><td style="text-align: left">要执行的 task 总数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_task_dma_base_addr0x0034"><a class="header" href="#rknn_pc_task_dma_base_addr0x0034">RKNN_pc_task_dma_base_addr（0x0034）</a></h2>
+<p>任务 DMA 基址寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dma_base_addr</code></td><td style="text-align: left">任务基址。各 DMA（feature DMA、weight DMA、DPU DMA、PPU DMA）的地址设为偏移地址，AXI 总线上的最终地址 = 基址 + 偏移地址</td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_pc_task_status0x003c"><a class="header" href="#rknn_pc_task_status0x003c">RKNN_pc_task_status（0x003C）</a></h2>
+<p>任务状态寄存器（只读）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:28</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">27:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>task_status</code></td><td style="text-align: left">任务状态（见下表）</td></tr>
+</tbody></table>
+</div><div class="table-wrapper"><table><thead><tr><th style="text-align: center">位域</th><th style="text-align: left">含义</th></tr></thead><tbody>
+<tr><td style="text-align: center">[11:0]</td><td style="text-align: left">当前 task 计数器值</td></tr>
+<tr><td style="text-align: center">[12]</td><td style="text-align: left">指示第一个 task 正在执行 / 第一个 task 的寄存器正在取</td></tr>
+<tr><td style="text-align: center">[13]</td><td style="text-align: left">指示最后一个 task 正在执行 / 最后一个 task 的寄存器正在取</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="附驱动层补充"><a class="header" href="#附驱动层补充">附：驱动层补充</a></h2>
+<h3 id="中断状态归一化rknpu_fuzz_status"><a class="header" href="#中断状态归一化rknpu_fuzz_status">中断状态归一化（<code>rknpu_fuzz_status()</code>）</a></h3>
+<p><span style="background:#fff3e0;padding:1px 4px;border-radius:3px;font-size:0.8em">StarryOS Rust 驱动</span> 在判定完成前，对 <code>interrupt_status</code> 做如下归一化处理：</p>
+<div class="table-wrapper"><table><thead><tr><th>位组</th><th>掩码</th><th>归一化规则</th><th>对应模块</th></tr></thead><tbody>
+<tr><td>bit[1:0]</td><td><code>0x03</code></td><td>任一非零 → 置 <code>0x03</code></td><td>CNA_FG</td></tr>
+<tr><td>bit[3:2]</td><td><code>0x0C</code></td><td>任一非零 → 置 <code>0x0C</code></td><td>CNA_WG</td></tr>
+<tr><td>bit[5:4]</td><td><code>0x30</code></td><td>任一非零 → 置 <code>0x30</code></td><td>CNA_CSC</td></tr>
+<tr><td>bit[7:6]</td><td><code>0xC0</code></td><td>任一非零 → 置 <code>0xC0</code></td><td>CORE</td></tr>
+<tr><td>bit[9:8]</td><td><code>0x300</code></td><td>任一非零 → 置 <code>0x300</code></td><td>DPU</td></tr>
+<tr><td>bit[11:10]</td><td><code>0xC00</code></td><td>任一非零 → 置 <code>0xC00</code></td><td>PPU</td></tr>
+</tbody></table>
+</div>
+<p><strong>含义</strong> <span style="background:#fce4ec;padding:1px 4px;border-radius:3px;font-size:0.8em">逆向推断</span>：每个功能模块有 2 个中断 bit（G0/G1），硬件可能只置其中一个，但驱动判定完成时需要两个都为 1，因此做归一化。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../documents/register-map.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../documents/registers/cna.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../documents/register-map.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../documents/registers/cna.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

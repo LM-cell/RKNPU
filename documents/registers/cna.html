@@ -1,0 +1,588 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>CNA - StarryOS-pulsar-development</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item "><a href="../../iwantsay.html"><strong aria-hidden="true">1.</strong> 概述</a></li><li class="chapter-item "><a href="../../plan/plan.html"><strong aria-hidden="true">2.</strong> 开发计划</a></li><li class="chapter-item "><a href="../../develop_log/index.html"><strong aria-hidden="true">3.</strong> 项目周报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/RKNPU技术报告.html"><strong aria-hidden="true">3.1.</strong> RKNPU技术报告</a></li><li class="chapter-item "><a href="../../develop_log/第一周/log.html"><strong aria-hidden="true">3.2.</strong> 第一周</a></li><li class="chapter-item "><a href="../../develop_log/第二周/log.html"><strong aria-hidden="true">3.3.</strong> 第二周</a></li><li class="chapter-item "><a href="../../develop_log/第三周/log.html"><strong aria-hidden="true">3.4.</strong> 第三周</a></li><li class="chapter-item "><a href="../../develop_log/第五周/log.html"><strong aria-hidden="true">3.5.</strong> 第五周</a></li><li class="chapter-item "><a href="../../develop_log/第六周/log.html"><strong aria-hidden="true">3.6.</strong> 第六周</a></li><li class="chapter-item "><a href="../../develop_log/第七周/log.html"><strong aria-hidden="true">3.7.</strong> 第七周</a></li><li class="chapter-item "><a href="../../develop_log/第八周/log.html"><strong aria-hidden="true">3.8.</strong> 第八周</a></li><li class="chapter-item "><a href="../../develop_log/第九周/log.html"><strong aria-hidden="true">3.9.</strong> 第九周</a></li><li class="chapter-item "><a href="../../develop_log/第十周/log.html"><strong aria-hidden="true">3.10.</strong> 第十周</a></li><li class="chapter-item "><a href="../../develop_log/第十一周/log.html"><strong aria-hidden="true">3.11.</strong> 第十一周</a></li></ol></li><li class="chapter-item "><a href="../../develop_log/monthly_index.html"><strong aria-hidden="true">4.</strong> 项目月报</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../develop_log/2月技术报告-周雨.html"><strong aria-hidden="true">4.1.</strong> 2月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/3月技术报告-周雨.html"><strong aria-hidden="true">4.2.</strong> 3月技术报告-周雨</a></li><li class="chapter-item "><a href="../../develop_log/4月技术报告-周雨.html"><strong aria-hidden="true">4.3.</strong> 4月技术报告-周雨</a></li></ol></li><li class="chapter-item expanded "><a href="../../documents/docs.html"><strong aria-hidden="true">5.</strong> 项目文档</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknn-manual.html"><strong aria-hidden="true">5.1.</strong> rknn手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../documents/rknn-hardware.html"><strong aria-hidden="true">5.1.1.</strong> rknn硬件手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknn-feature.html"><strong aria-hidden="true">5.1.1.1.</strong> RKNPU 硬件特性</a></li><li class="chapter-item expanded "><a href="../../documents/register-map.html"><strong aria-hidden="true">5.1.1.2.</strong> RKNPU寄存器图</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/registers/pc.html"><strong aria-hidden="true">5.1.1.2.1.</strong> PC</a></li><li class="chapter-item expanded "><a href="../../documents/registers/cna.html" class="active"><strong aria-hidden="true">5.1.1.2.2.</strong> CNA</a></li><li class="chapter-item "><a href="../../documents/registers/core.html"><strong aria-hidden="true">5.1.1.2.3.</strong> CORE</a></li><li class="chapter-item "><a href="../../documents/registers/dpu.html"><strong aria-hidden="true">5.1.1.2.4.</strong> DPU</a></li><li class="chapter-item "><a href="../../documents/registers/dpu-rdma.html"><strong aria-hidden="true">5.1.1.2.5.</strong> DPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ppu.html"><strong aria-hidden="true">5.1.1.2.6.</strong> PPU</a></li><li class="chapter-item "><a href="../../documents/registers/ppu-rdma.html"><strong aria-hidden="true">5.1.1.2.7.</strong> PPU_RDMA</a></li><li class="chapter-item "><a href="../../documents/registers/ddma-sdma.html"><strong aria-hidden="true">5.1.1.2.8.</strong> DDMA / SDMA</a></li><li class="chapter-item "><a href="../../documents/registers/global.html"><strong aria-hidden="true">5.1.1.2.9.</strong> GLOBAL</a></li></ol></li></ol></li><li class="chapter-item "><a href="../../documents/ioctl-protocol.html"><strong aria-hidden="true">5.1.2.</strong> IOCTL协议与数据结构</a></li><li class="chapter-item "><a href="../../documents/submit-irq-snapshot-restore.html"><strong aria-hidden="true">5.1.3.</strong> 当前提交-IRQ 边界快照恢复系统</a></li><li class="chapter-item "><a href="../../documents/npu-queue-scheduler.html"><strong aria-hidden="true">5.1.4.</strong> 当前 NPU 队列调度器配合说明</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/overview.html"><strong aria-hidden="true">5.1.5.</strong> rknn用户库手册</a><a class="toggle"><div>❱</div></a></li><li><ol class="section"><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-api.html"><strong aria-hidden="true">5.1.5.1.</strong> 推理 API 参考</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/rknn-matmul.html"><strong aria-hidden="true">5.1.5.2.</strong> 矩阵乘法 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/custom-op.html"><strong aria-hidden="true">5.1.5.3.</strong> 自定义算子 API</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/lifecycle.html"><strong aria-hidden="true">5.1.5.4.</strong> 模型推理全链条</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/memory.html"><strong aria-hidden="true">5.1.5.5.</strong> 内存管理与零拷贝</a></li><li class="chapter-item "><a href="../../documents/rknnlibso/internals.html"><strong aria-hidden="true">5.1.5.6.</strong> 闭源库内部机制</a></li></ol></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">StarryOS-pulsar-development</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="cna-寄存器块convolution-neural-network-accelerator"><a class="header" href="#cna-寄存器块convolution-neural-network-accelerator">CNA 寄存器块（Convolution Neural-network Accelerator）</a></h1>
+<p><strong>基址</strong>：<code>CORE_BASE + 0x1000</code>　｜　<strong>地址范围</strong>：<code>0x1000 ~ 0x1FFF</code></p>
+<blockquote>
+<p>来源：RK3588 TRM §36.4.3 Detail Registers Description</p>
+</blockquote>
+<p>CNA 是卷积加速单元，包含特征数据加载、权重加载、384KB 内部缓冲（CBUF）、序列扫描控制器（CSC）。</p>
+<hr />
+<h2 id="rknn_cna_s_status0x1000"><a class="header" href="#rknn_cna_s_status0x1000">RKNN_cna_s_status（0x1000）</a></h2>
+<p>执行器状态寄存器（只读）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:18</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">17:16</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>status_1</code></td><td style="text-align: left">执行器 1 状态。0：空闲；1：正在执行；2：正在执行且执行器 1 等待执行；3：保留</td></tr>
+<tr><td style="text-align: center">15:2</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">1:0</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>status_0</code></td><td style="text-align: left">执行器 0 状态。0：空闲；1：正在执行；2：正在执行且执行器 1 等待执行；3：保留</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_s_pointer0x1004"><a class="header" href="#rknn_cna_s_pointer0x1004">RKNN_cna_s_pointer（0x1004）</a></h2>
+<p>寄存器组指针与 ping-pong 控制。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>executer</code></td><td style="text-align: left">当前使用的寄存器组。0：执行器组 0；1：执行器组 1</td></tr>
+<tr><td style="text-align: center">15:6</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>executer_pp_clear</code></td><td style="text-align: left">清除执行器组指针，写 1 清零</td></tr>
+<tr><td style="text-align: center">4</td><td style="text-align: center">W1C</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pointer_pp_clear</code></td><td style="text-align: left">清除寄存器组指针，写 1 清零</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pointer_pp_mode</code></td><td style="text-align: left">Ping-pong 模式。0：按执行器切换（executer 0 完成后切到 1）；1：按指针切换（pointer 0 完成后切到 1）</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>executer_pp_en</code></td><td style="text-align: left">执行器组 ping-pong 使能。0：禁用；1：使能</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pointer_pp_en</code></td><td style="text-align: left">寄存器组 ping-pong 使能。0：禁用；1：使能</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pointer</code></td><td style="text-align: left">当前待设置的寄存器组。0：组 0；1：组 1</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_operation_enable0x1008"><a class="header" href="#rknn_cna_operation_enable0x1008">RKNN_cna_operation_enable（0x1008）</a></h2>
+<p>操作使能寄存器。写入此寄存器将触发 CNA 模块开始执行。此寄存器及之后的寄存器均为 ping-pong 影子寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:1</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>op_en</code></td><td style="text-align: left">CNA 操作使能。0：禁用；1：使能</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_conv_con10x100c"><a class="header" href="#rknn_cna_conv_con10x100c">RKNN_cna_conv_con1（0x100C）</a></h2>
+<p>卷积控制寄存器 1：精度、模式、反卷积等。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">30</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>nonalign_dma</code></td><td style="text-align: left">CNA DMA 非对齐模式。0：禁用；1：使能（ARGB 模式下请开启，使 DMA 连续取特征数据）</td></tr>
+<tr><td style="text-align: center">29</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>group_line_off</code></td><td style="text-align: left">组行取数关闭。0：使能组行取数；1：禁用（仅影响取数效率）</td></tr>
+<tr><td style="text-align: center">28:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>deconv</code></td><td style="text-align: left">反卷积使能。0：禁用；1：使能</td></tr>
+<tr><td style="text-align: center">15:12</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>argb_in</code></td><td style="text-align: left">非对齐通道层控制。8：1 通道输入；9：2 通道；10：3 通道；11：4 通道</td></tr>
+<tr><td style="text-align: center">11:10</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">9:7</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>proc_precision</code></td><td style="text-align: left">处理精度。0：int8；1：int16；2：fp16；3：bf16；6：int4；7：tf32</td></tr>
+<tr><td style="text-align: center">6:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>in_precision</code></td><td style="text-align: left">输入精度。编码同 <code>proc_precision</code></td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>conv_mode</code></td><td style="text-align: left">卷积模式。0：直接卷积；3：深度可分离卷积（Depthwise）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_conv_con20x1010"><a class="header" href="#rknn_cna_conv_con20x1010">RKNN_cna_conv_con2（0x1010）</a></h2>
+<p>卷积控制寄存器 2：kernel 分组、feature grain、CSC 控制。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:24</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">23:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>kernel_group</code></td><td style="text-align: left">Kernel 分组数。int8 下 32 个 kernel 为 1 组，int16/fp16 下 16 个为 1 组。例：256 个 kernel，int8 下设为 256/32−1=7</td></tr>
+<tr><td style="text-align: center">15:14</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">13:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>feature_grains</code></td><td style="text-align: left">卷积开始前需缓冲的特征数据行数。建议设为 y_stride + weight_height + 1</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>csc_wo_en</code></td><td style="text-align: left">权重扫描控制。0：使能 CSC 输出权重到 CORE；1：禁用</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>csc_do_en</code></td><td style="text-align: left">数据扫描控制。0：使能 CSC 输出特征数据到 CORE；1：禁用</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cmd_fifo_srst</code></td><td style="text-align: left">命令 FIFO 软复位（调试用）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_conv_con30x1014"><a class="header" href="#rknn_cna_conv_con30x1014">RKNN_cna_conv_con3（0x1014）</a></h2>
+<p>卷积控制寄存器 3：多核模式、空洞卷积、反卷积步长、卷积步长。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">30:28</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>nn_mode</code></td><td style="text-align: left">多核协作模式。0：32×32（单核）；1：64×32；2：96×32；4：32×64；5：32×96。单核模式保持 0</td></tr>
+<tr><td style="text-align: center">27:26</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">25:21</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>atrous_y_dilation</code></td><td style="text-align: left">空洞卷积 Y 方向膨胀值（列方向两像素间插入的 pad 数）</td></tr>
+<tr><td style="text-align: center">20:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>atrous_x_dilation</code></td><td style="text-align: left">空洞卷积 X 方向膨胀值（行方向两像素间插入的 pad 数）。&gt;0 时启用空洞卷积</td></tr>
+<tr><td style="text-align: center">15:14</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">13:11</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>deconv_y_stride</code></td><td style="text-align: left">反卷积 Y 步长</td></tr>
+<tr><td style="text-align: center">10:8</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>deconv_x_stride</code></td><td style="text-align: left">反卷积 X 步长</td></tr>
+<tr><td style="text-align: center">7:6</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">5:3</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>conv_y_stride</code></td><td style="text-align: left">卷积 Y 步长</td></tr>
+<tr><td style="text-align: center">2:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>conv_x_stride</code></td><td style="text-align: left">卷积 X 步长</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_data_size00x1020"><a class="header" href="#rknn_cna_data_size00x1020">RKNN_cna_data_size0（0x1020）</a></h2>
+<p>输入特征数据宽高。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:27</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">26:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>datain_width</code></td><td style="text-align: left">输入特征数据宽度</td></tr>
+<tr><td style="text-align: center">15:11</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">10:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>datain_height</code></td><td style="text-align: left">输入特征数据高度</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_data_size10x1024"><a class="header" href="#rknn_cna_data_size10x1024">RKNN_cna_data_size1（0x1024）</a></h2>
+<p>输入特征数据通道数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:30</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">29:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>datain_channel_real</code></td><td style="text-align: left">真实通道数。当输入通道不是 8（int8）或 4（int16/fp16）的整数倍时，设置此字段</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>datain_channel</code></td><td style="text-align: left">输入通道数。int8 须为 8 的整数倍；int16/fp16 须为 4 的整数倍</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_data_size20x1028"><a class="header" href="#rknn_cna_data_size20x1028">RKNN_cna_data_size2（0x1028）</a></h2>
+<p>卷积后输出数据宽度。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:11</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">10:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dataout_width</code></td><td style="text-align: left">卷积后数据宽度</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_data_size30x102c"><a class="header" href="#rknn_cna_data_size30x102c">RKNN_cna_data_size3（0x102C）</a></h2>
+<p>卷积后输出数据 surface 模式与总像素数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:24</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">23:22</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>surf_mode</code></td><td style="text-align: left">Surface 串行模式。0/1：1 surf；2：2 surf；3：4 surf</td></tr>
+<tr><td style="text-align: center">21:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dataout_atomics</code></td><td style="text-align: left">卷积后输出总像素数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_weight_size00x1030"><a class="header" href="#rknn_cna_weight_size00x1030">RKNN_cna_weight_size0（0x1030）</a></h2>
+<p>权重总字节数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_bytes</code></td><td style="text-align: left">本次卷积的权重总字节数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_weight_size10x1034"><a class="header" href="#rknn_cna_weight_size10x1034">RKNN_cna_weight_size1（0x1034）</a></h2>
+<p>单个 kernel 的权重字节数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:19</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">18:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_bytes_per_kernel</code></td><td style="text-align: left">单个 kernel 的权重字节数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_weight_size20x1038"><a class="header" href="#rknn_cna_weight_size20x1038">RKNN_cna_weight_size2（0x1038）</a></h2>
+<p>Kernel 宽高与数量。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:29</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">28:24</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_width</code></td><td style="text-align: left">Kernel 宽度</td></tr>
+<tr><td style="text-align: center">23:21</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">20:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_height</code></td><td style="text-align: left">Kernel 高度</td></tr>
+<tr><td style="text-align: center">15:14</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">13:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_kernels</code></td><td style="text-align: left">Kernel 数量</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cbuf_con00x1040"><a class="header" href="#rknn_cna_cbuf_con00x1040">RKNN_cna_cbuf_con0（0x1040）</a></h2>
+<p>CBUF（内部缓冲）控制寄存器 0：数据/权重复用、Bank 分配。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:14</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">13</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_reuse</code></td><td style="text-align: left">权重数据复用使能。0：禁用；1：使能，直接从内部缓冲取权重</td></tr>
+<tr><td style="text-align: center">12</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_reuse</code></td><td style="text-align: left">特征数据复用使能。0：禁用；1：使能，直接从内部缓冲取数据</td></tr>
+<tr><td style="text-align: center">11</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">10:8</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>fc_data_bank</code></td><td style="text-align: left">FC 零跳过模式的特征数据 Bank 数。FC 零跳过模式设为 1，否则必须为 0</td></tr>
+<tr><td style="text-align: center">7:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_bank</code></td><td style="text-align: left">权重数据占用的 Bank 数。1：Bank 7；2：Bank 6-7；…；7：Bank 1-7</td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_bank</code></td><td style="text-align: left">特征数据占用的 Bank 数。0：Bank 0；1：Bank 0-1；…；6：Bank 0-6</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cbuf_con10x1044"><a class="header" href="#rknn_cna_cbuf_con10x1044">RKNN_cna_cbuf_con1（0x1044）</a></h2>
+<p>CBUF 控制寄存器 1。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:13</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">12:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_entries</code></td><td style="text-align: left">存储一行特征图所需的 Bank 空间</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con00x104c"><a class="header" href="#rknn_cna_cvt_con00x104c">RKNN_cna_cvt_con0（0x104C）</a></h2>
+<p>输入转换控制寄存器 0：CVT 截断值、符号、舍入、旁路。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:28</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">27:22</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_truncate_3</code></td><td style="text-align: left">CVT 截断值 3</td></tr>
+<tr><td style="text-align: center">21:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_truncate_2</code></td><td style="text-align: left">CVT 截断值 2</td></tr>
+<tr><td style="text-align: center">15:10</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_truncate_1</code></td><td style="text-align: left">CVT 截断值 1</td></tr>
+<tr><td style="text-align: center">9:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_truncate_0</code></td><td style="text-align: left">CVT 截断值 0</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_sign</code></td><td style="text-align: left">特征数据符号。0：无符号；1：有符号</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>round_type</code></td><td style="text-align: left">舍入类型。0：奇入偶不入；1：0.5 向上进 1</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_type</code></td><td style="text-align: left">转换运算顺序。0：先乘后加；1：先加后乘</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_bypass</code></td><td style="text-align: left">旁路输入转换。0：使能 CVT；1：禁用 CVT</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con10x1050"><a class="header" href="#rknn_cna_cvt_con10x1050">RKNN_cna_cvt_con1（0x1050）</a></h2>
+<p>输入转换控制 1：第 1 通道的 scale 和 offset。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_scale0</code></td><td style="text-align: left">CVT 缩放 0（第 1 通道乘法操作数）</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_offset0</code></td><td style="text-align: left">CVT 偏移 0（第 1 通道加法操作数）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con20x1054"><a class="header" href="#rknn_cna_cvt_con20x1054">RKNN_cna_cvt_con2（0x1054）</a></h2>
+<p>输入转换控制 2：第 2 通道。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_scale1</code></td><td style="text-align: left">CVT 缩放 1（第 2 通道乘法操作数）</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_offset1</code></td><td style="text-align: left">CVT 偏移 1（第 2 通道加法操作数）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con30x1058"><a class="header" href="#rknn_cna_cvt_con30x1058">RKNN_cna_cvt_con3（0x1058）</a></h2>
+<p>输入转换控制 3：第 3 通道。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_scale2</code></td><td style="text-align: left">CVT 缩放 2（第 3 通道乘法操作数）</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_offset2</code></td><td style="text-align: left">CVT 偏移 2（第 3 通道加法操作数）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con40x105c"><a class="header" href="#rknn_cna_cvt_con40x105c">RKNN_cna_cvt_con4（0x105C）</a></h2>
+<p>输入转换控制 4：第 4 通道。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_scale3</code></td><td style="text-align: left">CVT 缩放 3（第 4 通道乘法操作数）</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cvt_offset3</code></td><td style="text-align: left">CVT 偏移 3（第 4 通道加法操作数）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_fc_con00x1060"><a class="header" href="#rknn_cna_fc_con00x1060">RKNN_cna_fc_con0（0x1060）</a></h2>
+<p>全连接零跳过控制 0。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>fc_skip_data</code></td><td style="text-align: left">FC 零跳过数据值（通常设为 0）</td></tr>
+<tr><td style="text-align: center">15:1</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>fc_skip_en</code></td><td style="text-align: left">FC 零跳过使能。0：禁用；1：使能。当某像素特征数据为 0 时，跳过对应权重的取数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_fc_con10x1064"><a class="header" href="#rknn_cna_fc_con10x1064">RKNN_cna_fc_con1（0x1064）</a></h2>
+<p>全连接零跳过控制 1。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_offset</code></td><td style="text-align: left">FC 零跳过模式下的特征数据偏移</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_pad_con00x1068"><a class="header" href="#rknn_cna_pad_con00x1068">RKNN_cna_pad_con0（0x1068）</a></h2>
+<p>Pad 控制寄存器 0。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:8</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">7:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pad_left</code></td><td style="text-align: left">特征图左侧 pad 数</td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pad_top</code></td><td style="text-align: left">特征图顶部 pad 数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_feature_data_addr0x1070"><a class="header" href="#rknn_cna_feature_data_addr0x1070">RKNN_cna_feature_data_addr（0x1070）</a></h2>
+<p>输入特征数据基址。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>feature_base_addr</code></td><td style="text-align: left">特征数据地址</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_fc_con20x1074"><a class="header" href="#rknn_cna_fc_con20x1074">RKNN_cna_fc_con2（0x1074）</a></h2>
+<p>权重数据地址偏移。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:17</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">16:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_offset</code></td><td style="text-align: left">权重数据地址偏移</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dma_con00x1078"><a class="header" href="#rknn_cna_dma_con00x1078">RKNN_cna_dma_con0（0x1078）</a></h2>
+<p>AXI DMA 控制寄存器 0：burst 长度。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>ov4k_bypass</code></td><td style="text-align: left">超 4K burst 拆分。0：使能（将超 4K 的 burst 拆为 2 个）；1：旁路</td></tr>
+<tr><td style="text-align: center">30:20</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">19:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>weight_burst_len</code></td><td style="text-align: left">权重 DMA AXI burst 长度。3：burst=4；7：burst=8；15：burst=16</td></tr>
+<tr><td style="text-align: center">15:4</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>data_burst_len</code></td><td style="text-align: left">特征 DMA AXI burst 长度。编码同上</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dma_con10x107c"><a class="header" href="#rknn_cna_dma_con10x107c">RKNN_cna_dma_con1（0x107C）</a></h2>
+<p>行步长（Line stride）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:28</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">27:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>line_stride</code></td><td style="text-align: left">行步长。含虚拟框（Virtual box）的特征宽度</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dma_con20x1080"><a class="header" href="#rknn_cna_dma_con20x1080">RKNN_cna_dma_con2（0x1080）</a></h2>
+<p>Surface 步长。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:28</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">27:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>surf_stride</code></td><td style="text-align: left">Surface 步长。特征图实际 surface 面积</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_fc_data_size00x1084"><a class="header" href="#rknn_cna_fc_data_size00x1084">RKNN_cna_fc_data_size0（0x1084）</a></h2>
+<p>FC 模式下 AXI DMA 的特征输入宽高。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:30</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">29:16</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dma_width</code></td><td style="text-align: left">AXI DMA 特征输入宽度</td></tr>
+<tr><td style="text-align: center">15:11</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">10:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dma_height</code></td><td style="text-align: left">AXI DMA 特征输入高度</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_fc_data_size10x1088"><a class="header" href="#rknn_cna_fc_data_size10x1088">RKNN_cna_fc_data_size1（0x1088）</a></h2>
+<p>FC 模式下 AXI DMA 的特征输入通道数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:16</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">15:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dma_channel</code></td><td style="text-align: left">AXI DMA 特征输入通道数</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_clk_gate0x1090"><a class="header" href="#rknn_cna_clk_gate0x1090">RKNN_cna_clk_gate（0x1090）</a></h2>
+<p>时钟门控控制寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:5</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cbuf_cs_disable_clkgate</code></td><td style="text-align: left">CBUF 自动时钟门控。0：使能自动门控；1：禁用 CBUF 时钟门控</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>csc_disable_clkgate</code></td><td style="text-align: left">CSC 自动时钟门控。0：使能；1：禁用 CSC 时钟门控</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cna_weight_disable_clkgate</code></td><td style="text-align: left">权重取数自动时钟门控。0：使能；1：禁用</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>cna_feature_disable_clkgate</code></td><td style="text-align: left">特征取数自动时钟门控。0：使能；1：禁用</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dcomp_ctrl0x1100"><a class="header" href="#rknn_cna_dcomp_ctrl0x1100">RKNN_cna_dcomp_ctrl（0x1100）</a></h2>
+<p>权重解压控制寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:4</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>wt_dec_bypass</code></td><td style="text-align: left">旁路权重解压</td></tr>
+<tr><td style="text-align: center">2:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>decomp_control</code></td><td style="text-align: left">权重解压控制</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dcomp_regnum0x1104"><a class="header" href="#rknn_cna_dcomp_regnum0x1104">RKNN_cna_dcomp_regnum（0x1104）</a></h2>
+<p>权重解压寄存器数。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dcomp_regnum</code></td><td style="text-align: left">权重解压寄存器数量</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dcomp_addr00x1110"><a class="header" href="#rknn_cna_dcomp_addr00x1110">RKNN_cna_dcomp_addr0（0x1110）</a></h2>
+<p>权重基址。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:4</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>decompress_addr0</code></td><td style="text-align: left">权重基址</td></tr>
+<tr><td style="text-align: center">3:0</td><td style="text-align: center">RO</td><td style="text-align: center">0x0</td><td style="text-align: left">—</td><td style="text-align: left">保留</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_dcomp_amount0150x1140--0x117c"><a class="header" href="#rknn_cna_dcomp_amount0150x1140--0x117c">RKNN_cna_dcomp_amount0~15（0x1140 ~ 0x117C）</a></h2>
+<p>权重解压量寄存器，共 16 个，偏移 <code>0x1140 + N×4</code>（N = 0~15）。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>dcomp_amountN</code></td><td style="text-align: left">第 N 次解压的权重数据量</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_cvt_con50x1180"><a class="header" href="#rknn_cna_cvt_con50x1180">RKNN_cna_cvt_con5（0x1180）</a></h2>
+<p>按通道 CVT 使能。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>per_channel_cvt_en</code></td><td style="text-align: left">按通道使能 CVT 功能。int4 共 32 通道（128 bit），int8 共 16 通道</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="rknn_cna_pad_con10x1184"><a class="header" href="#rknn_cna_pad_con10x1184">RKNN_cna_pad_con1（0x1184）</a></h2>
+<p>Pad 值寄存器。</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Bit</th><th style="text-align: center">属性</th><th style="text-align: center">复位值</th><th style="text-align: left">字段名</th><th style="text-align: left">描述</th></tr></thead><tbody>
+<tr><td style="text-align: center">31:0</td><td style="text-align: center">RW</td><td style="text-align: center">0x0</td><td style="text-align: left"><code>pad_value</code></td><td style="text-align: left">Pad 填充值</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../documents/registers/pc.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../documents/registers/core.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../documents/registers/pc.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../documents/registers/core.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
