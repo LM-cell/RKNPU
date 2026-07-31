@@ -2,7 +2,6 @@ project('npu_benchmark', 'c', version: '1.0.0')
 
 incdir = include_directories('include')
 lib_src = ['src/npu_interface.c','src/npu_matmul.c']
-thread_dep = dependency('threads')
 # lib = library('rk3588-npu',lib_src, include_directories : incdir)
 lib = static_library('rk3588-npu', lib_src, include_directories : incdir)
 
@@ -46,14 +45,21 @@ three_core_task = executable(
     link_args : '-lm'
 )
 
-core_scaling_benchmark = executable(
-    'core_scaling_benchmark',
-    'tests/core_scaling_benchmark.c',
+core_scaling_benchmark_fix = executable(
+    'core_scaling_benchmark_fix',
+    ['tests/core_scaling_benchmark_fix.c', 'src/benchmark_stats.c'],
     include_directories : incdir,
     link_with : lib,
-    dependencies : thread_dep,
     link_args : '-lm'
 )
+
+benchmark_stats_test = executable(
+    'benchmark_stats_test',
+    ['tests/benchmark_stats_test.c', 'src/benchmark_stats.c'],
+    include_directories : incdir,
+    link_args : '-lm'
+)
+test('benchmark latency statistics', benchmark_stats_test)
 
 rknpu_action_smoke = executable(
     'rknpu_action_smoke',
@@ -62,6 +68,18 @@ rknpu_action_smoke = executable(
     link_with : lib
 )
 test('rknpu action smoke', rknpu_action_smoke, is_parallel : false)
+
+# Small deterministic target for user/kernel GDB walkthroughs.  Keep this
+# target unoptimised with frame pointers even when the rest of the build uses
+# --buildtype=release.
+rknpu_gdb_walkthrough = executable(
+    'rknpu_gdb_walkthrough',
+    ['tests/rknpu_gdb_walkthrough.c', 'src/npu_matmul.c'],
+    include_directories : incdir,
+    link_args : '-lm',
+    c_args : ['-fno-omit-frame-pointer', '-fno-inline-functions'],
+    override_options : ['optimization=0', 'debug=true', 'strip=false']
+)
 
 test_matmul_int8  = executable('matmul_int8', 'tests/matmul_int8.c', include_directories : incdir, link_with : lib, link_args : '-lm')
 test('matmul int8 1x32x32',test_matmul_int8, is_parallel : false , args : ['1','32','32'])
