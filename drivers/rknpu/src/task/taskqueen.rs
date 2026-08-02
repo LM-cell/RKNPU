@@ -664,10 +664,12 @@ mod tests {
         let ready =
             RknpuQueuedSubmit::new(fake_submit(1, -10, &[(0, 0, 1)]), vec![fake_task(0x300)]);
 
+        // 向core 0派发第一条lane，使旧提交真正进入running状态
+        assert_eq!(queue.reserve_next_dispatch(0).unwrap().task_id,running_id);
         let running_id = queue.enqueue(running);
         let ready_id = queue.enqueue(ready);
 
-        assert_eq!(queue.reserve_next_dispatch(0).unwrap().task_id, running_id);
+        
         assert_eq!(queue.reserve_next_dispatch(1).unwrap().task_id, running_id);
         assert_ne!(running_id, ready_id);
     }
