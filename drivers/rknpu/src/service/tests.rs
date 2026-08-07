@@ -1,7 +1,8 @@
+// Submit-latency instrumentation last modified: 2026-08-03.
 use alloc::{vec, vec::Vec};
 use core::{
     ptr::NonNull,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
@@ -26,6 +27,8 @@ struct MockPlatform {
     device: Arc<MockDevice>,
     spawn_count: Arc<AtomicUsize>,
     interrupt_wait: Arc<AtomicBool>,
+    /// Mock monotonic clock for timestamp-order tests.
+    clock_ns: Arc<AtomicU64>,
 }
 
 /// Shared mock hardware object guarded the same way an OS adapter would guard it.
@@ -53,6 +56,7 @@ impl MockPlatform {
             }),
             spawn_count: Arc::new(AtomicUsize::new(0)),
             interrupt_wait: Arc::new(AtomicBool::new(false)),
+            clock_ns: Arc::new(AtomicU64::new(1_000)),
         }
     }
 
@@ -207,6 +211,11 @@ impl RknpuSchedulerRuntime for MockPlatform {
                 cv: Condvar::new(),
             }),
         }
+    }
+
+    /// Advance a deterministic clock for scheduler timing tests.
+    fn monotonic_time_ns(&self) -> u64 {
+        self.clock_ns.fetch_add(1_000, Ordering::SeqCst)
     }
 
     /// Spawn the scheduler worker and count the spawn for singleton checks.

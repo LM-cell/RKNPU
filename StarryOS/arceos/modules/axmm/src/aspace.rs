@@ -18,6 +18,23 @@ use crate::{
     mapping_to_ax_error,
 };
 
+// Last modified: 2026-08-03
+// A zero populate count is valid only when a permitted PTE already resolves the fault.
+fn page_fault_is_resolved(
+    populated_pages: usize,
+    mapped_flags: Option<MappingFlags>,
+    access_flags: PageFaultFlags,
+) -> bool {
+    if populated_pages != 0 {
+        return true;
+    }
+
+    match mapped_flags {
+        Some(flags) => flags.contains(access_flags),
+        None => false,
+    }
+}
+
 /// The virtual memory address space.
 pub struct AddrSpace {
     va_range: VirtAddrRange,
@@ -334,8 +351,9 @@ impl AddrSpace {
             let flags = area.flags();
             if flags.contains(access_flags) {
                 let page_size = area.backend().page_size();
+                let page_start = vaddr.align_down(page_size);
                 let populate_result = area.backend().populate(
-                    VirtAddrRange::from_start_size(vaddr.align_down(page_size), page_size as _),
+                    VirtAddrRange::from_start_size(page_start, page_size as _),
                     flags,
                     access_flags,
                     &mut self.pt.to_mut(),
@@ -345,11 +363,16 @@ impl AddrSpace {
                         if let Some(cb) = callback {
                             cb(self);
                         }
-                        if n == 0 {
+                        let mapped_flags = if n == 0 {
+                            self.pt.query(page_start).ok().map(|(_, flags, _)| flags)
+                        } else {
+                            None
+                        };
+                        if page_fault_is_resolved(n, mapped_flags, access_flags) {
+                            true
+                        } else {
                             warn!("No pages populated for {vaddr:?} ({flags:?})");
                             false
-                        } else {
-                            true
                         }
                     }
                     Err(err) => {
@@ -409,5 +432,26 @@ impl fmt::Debug for AddrSpace {
 impl Drop for AddrSpace {
     fn drop(&mut self) {
         self.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn existing_executable_mapping_resolves_zero_populate() {
+        let mapped = MappingFlags::READ | MappingFlags::EXECUTE | MappingFlags::USER;
+        let access = MappingFlags::EXECUTE | MappingFlags::USER;
+
+        assert!(page_fault_is_resolved(0, Some(mapped), access));
+    }
+
+    #[test]
+    fn mapping_without_execute_permission_does_not_resolve_fault() {
+        let mapped = MappingFlags::READ | MappingFlags::USER;
+        let access = MappingFlags::EXECUTE | MappingFlags::USER;
+
+        assert!(!page_fault_is_resolved(0, Some(mapped), access));
     }
 }

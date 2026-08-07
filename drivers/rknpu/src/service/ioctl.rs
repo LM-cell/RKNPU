@@ -1,3 +1,4 @@
+// Submit-latency instrumentation last modified: 2026-08-03.
 use alloc::vec;
 use core::{convert::TryFrom, mem};
 
@@ -98,6 +99,8 @@ impl<P: RknpuPlatform> RknpuService<P> {
 
     /// Handle a blocking submit ioctl from task-array copy-in to terminal copy-back.
     fn handle_submit_ioctl(&self, arg: usize) -> Result<usize, RknpuServiceError> {
+        // t0: submit enters the driver.
+        let submit_enter_time_ns = self.inner.platform.monotonic_time_ns();
         let submit_args = self.copy_from_user::<RknpuSubmit>(arg)?;
 
         if submit_args.task_number == 0 || submit_args.task_array_cpu_address == 0 {
@@ -136,8 +139,10 @@ impl<P: RknpuPlatform> RknpuService<P> {
             submit_args.task_array_dma_address,
             user_task_array_cpu_address
         );
-        let queue_task_id =
-            self.enqueue_submit(RknpuQueuedSubmit::new(submit_args.clone(), tasks))?;
+        let mut queued_submit = RknpuQueuedSubmit::new(submit_args.clone(), tasks);
+        // Keep t0 with the scheduler-owned task.
+        queued_submit.latency.t0_ns = submit_enter_time_ns;
+        let queue_task_id = self.enqueue_submit(queued_submit)?;
 
         debug!(
             "[rknpu-submit] enqueued queue_task={} and entering blocking wait",
@@ -150,6 +155,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
             queue_task_id
         );
         let finished = self.take_terminal_submit(queue_task_id)?;
+        let latency = finished.latency;
         let mut finished_submit = finished.submit;
         finished_submit.task_array_cpu_address = user_task_array_cpu_address;
 
@@ -169,6 +175,23 @@ impl<P: RknpuPlatform> RknpuService<P> {
             warn!("rknpu submit ioctl completed with driver error: {:?}", err);
             return Err(RknpuServiceError::Driver(err));
         }
+
+        // t4: copy-out is complete.
+        let submit_return_time_ns = self.inner.platform.monotonic_time_ns();
+        info!(
+            "[rknpu-latency] queue_task={} t0_ns={} t1_ns={} t2_ns={} t3_ns={} t4_ns={} \
+             submit_prepare_ns={} queue_wait_ns={} dispatch_execute_ns={} complete_return_ns={}",
+            queue_task_id,
+            latency.t0_ns,
+            latency.t1_ns,
+            latency.t2_ns,
+            latency.t3_ns,
+            submit_return_time_ns,
+            latency.t1_ns - latency.t0_ns,
+            latency.t2_ns - latency.t1_ns,
+            latency.t3_ns - latency.t2_ns,
+            submit_return_time_ns - latency.t3_ns
+        );
 
         Ok(0)
     }

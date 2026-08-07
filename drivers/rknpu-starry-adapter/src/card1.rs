@@ -1,3 +1,4 @@
+// Submit-latency instrumentation last modified: 2026-08-03.
 use alloc::string::ToString;
 use core::{
     any::Any,
@@ -173,6 +174,11 @@ impl RknpuSchedulerRuntime for StarryPlatform {
         StarryWorkerSignal {
             event: Event::new(),
         }
+    }
+
+    fn monotonic_time_ns(&self) -> u64 {
+        // Use the StarryOS monotonic clock for every submit phase.
+        axhal::time::monotonic_time_nanos() as u64
     }
 
     fn spawn_worker<F>(&self, f: F)

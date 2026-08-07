@@ -6,6 +6,8 @@
 //! dispatch decisions. It does not own ready/running/complete buckets or any
 //! per-core binding state; that belongs to the StarryOS scheduler layer.
 
+// Submit-latency instrumentation last modified: 2026-08-03.
+
 #![allow(dead_code)]
 
 use crate::{
@@ -107,6 +109,19 @@ impl SubmitReplyState {
     }
 }
 
+/// Driver-side timestamps for the four coarse submit latency phases.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct SubmitLatencyTrace {
+    /// Submit ioctl entered the driver.
+    pub t0_ns: u64,
+    /// Submit was inserted into the scheduler queue.
+    pub t1_ns: u64,
+    /// The first NPU-core dispatch started.
+    pub t2_ns: u64,
+    /// The scheduler observed the final NPU-core completion.
+    pub t3_ns: u64,
+}
+
 /// Queue-owned submit payload created at the ioctl boundary.
 ///
 /// This is the hand-off object from `card1` to the scheduler. It splits the
@@ -123,6 +138,8 @@ pub struct RknpuQueuedSubmit {
     reply: SubmitReplyState,
     /// Kernel-owned task shadow that the scheduler updates in place.
     pub tasks: Vec<RknpuTask>,
+    /// Timestamps carried from ioctl entry into the live scheduler task.
+    pub(crate) latency: SubmitLatencyTrace,
 }
 
 impl RknpuQueuedSubmit {
@@ -133,6 +150,7 @@ impl RknpuQueuedSubmit {
             meta: SubmitMeta::from_submit(&submit, task_total),
             reply: SubmitReplyState::from_submit(&submit),
             tasks,
+            latency: SubmitLatencyTrace::default(),
         }
     }
 }
@@ -166,6 +184,8 @@ pub struct RknpuQueueTask {
     pub lane_isrun: [bool; RKNPU_MAX_SUBCORE_TASKS],
     /// Last scheduler or driver error seen by this submit.
     pub last_error: Option<RknpuError>,
+    /// Coarse submit phase timestamps collected without changing scheduling.
+    pub(crate) latency: SubmitLatencyTrace,
 }
 
 impl RknpuQueueTask {
@@ -179,7 +199,25 @@ impl RknpuQueueTask {
             subcore_cursors: [0; RKNPU_MAX_SUBCORE_TASKS],
             lane_isrun: [false; RKNPU_MAX_SUBCORE_TASKS],
             last_error: None,
+            latency: queued_submit.latency,
         }
+    }
+
+    /// Record when this submit entered the ready queue.
+    pub(crate) fn mark_enqueued(&mut self, time_ns: u64) {
+        self.latency.t1_ns = time_ns;
+    }
+
+    /// Record only the first core dispatch for this submit.
+    pub(crate) fn mark_first_dispatch(&mut self, time_ns: u64) {
+        if self.latency.t2_ns == 0 {
+            self.latency.t2_ns = time_ns;
+        }
+    }
+
+    /// Record when the scheduler observed terminal hardware completion.
+    pub(crate) fn mark_terminal(&mut self, time_ns: u64) {
+        self.latency.t3_ns = time_ns;
     }
 
     /// Return how many task completions make this submit terminal on success.
@@ -780,5 +818,26 @@ mod tests {
         let task = RknpuQueueTask::new(1, queued);
 
         assert_eq!(task.completion_target(), 2);
+    }
+
+    #[test]
+    fn submit_latency_keeps_the_first_core_dispatch_time() {
+        let mut queued = RknpuQueuedSubmit::new(
+            fake_submit(1, 0, &[(0, 0, 1)]),
+            vec![fake_task(0x100)],
+        );
+        queued.latency.t0_ns = 10;
+
+        let mut task = RknpuQueueTask::new(1, queued);
+        task.mark_enqueued(20);
+        task.mark_first_dispatch(30);
+        // Keep t2 from the first core dispatch.
+        task.mark_first_dispatch(35);
+        task.mark_terminal(40);
+
+        assert_eq!(task.latency.t0_ns, 10);
+        assert_eq!(task.latency.t1_ns, 20);
+        assert_eq!(task.latency.t2_ns, 30);
+        assert_eq!(task.latency.t3_ns, 40);
     }
 }

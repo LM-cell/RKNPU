@@ -1,3 +1,4 @@
+// Submit-latency instrumentation last modified: 2026-08-03.
 use alloc::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
@@ -13,6 +14,7 @@ use spin::Mutex;
 use crate::{
     NPU_MAX_CORES, RknpuError, RknpuQueueTask, RknpuQueueTaskId, RknpuQueuedSubmit, RknpuTask,
     ioctrl::RknpuSubmit,
+    task::taskqueen::SubmitLatencyTrace,
 };
 
 use super::{
@@ -35,6 +37,8 @@ pub struct CompletedSubmit {
     pub tasks: Vec<RknpuTask>,
     /// Last terminal error recorded for this submit.
     pub last_error: Option<RknpuError>,
+    /// Coarse phase timestamps copied out with the terminal submit.
+    pub(crate) latency: SubmitLatencyTrace,
 }
 
 /// Scheduler-owned binding between one physical core and one running lane.
@@ -339,6 +343,11 @@ impl<P: RknpuPlatform> RknpuService<P> {
             }
 
             let task_id = state.enqueue_task(queued_submit);
+            // t1: task entered the scheduler queue.
+            let enqueue_time_ns = self.inner.platform.monotonic_time_ns();
+            if let Some(task) = state.tasks.get_mut(&task_id) {
+                task.mark_enqueued(enqueue_time_ns);
+            }
             state.waiters.insert(task_id, waiter);
             (task_id, spawn_worker)
         };
@@ -409,12 +418,14 @@ impl<P: RknpuPlatform> RknpuService<P> {
         state.waiters.remove(&task_id);
 
         let submit = task.build_submit();
+        let latency = task.latency;
         let tasks = task.tasks;
         let last_error = task.last_error;
         Ok(CompletedSubmit {
             submit,
             tasks,
             last_error,
+            latency,
         })
     }
 
@@ -592,6 +603,8 @@ impl<P: RknpuPlatform> RknpuService<P> {
             let mut terminal_ids = Vec::new();
 
             for completion in completions {
+                // Candidate t3: one core completion was observed.
+                let completion_time_ns = self.inner.platform.monotonic_time_ns();
                 let core_slot = completion.core_slot as usize;
                 let Some(binding) = state.core_binding.remove(&core_slot) else {
                     debug!(
@@ -647,6 +660,10 @@ impl<P: RknpuPlatform> RknpuService<P> {
                 );
 
                 if let Some(task_id) = state.reclassify_task(binding.task_id) {
+                    if let Some(task) = state.complete.get_mut(&task_id) {
+                        // t3: the whole submit became terminal.
+                        task.mark_terminal(completion_time_ns);
+                    }
                     terminal_ids.push(task_id);
                 }
             }
@@ -695,6 +712,15 @@ impl<P: RknpuPlatform> RknpuService<P> {
             let Some(mut setup) = setup else {
                 break;
             };
+
+            // t2: first NPU dispatch starts.
+            {
+                let mut state = self.inner.scheduler.state.lock();
+                let dispatch_time_ns = self.inner.platform.monotonic_time_ns();
+                if let Some(task) = state.tasks.get_mut(&setup.binding.task_id) {
+                    task.mark_first_dispatch(dispatch_time_ns);
+                }
+            }
 
             if confirmed_submit_ids.insert(setup.binding.task_id) {
                 debug!(

@@ -1,3 +1,4 @@
+// Submit-latency instrumentation last modified: 2026-08-03.
 use alloc::vec::Vec;
 
 use crate::{Rknpu, RknpuError};
@@ -77,6 +78,9 @@ pub trait RknpuSchedulerRuntime: Send + Sync + 'static {
 
     /// Create the global worker wake-up primitive.
     fn new_worker_signal(&self) -> Self::WorkerSignal;
+
+    /// Read the monotonic clock used by submit tracing.
+    fn monotonic_time_ns(&self) -> u64;
 
     /// Spawn the singleton worker thread/task.
     fn spawn_worker<F>(&self, f: F)
