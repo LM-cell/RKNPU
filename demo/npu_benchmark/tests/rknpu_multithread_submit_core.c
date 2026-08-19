@@ -1,90 +1,107 @@
-/* 多线程核心数量参数化测试，最后修改日期：2026-08-05。 */
+/*
+ * RKNPU 多线程核心数量、Submit admission 与四阶段延迟测试，
+ * 最后修改日期：2026-08-18。
+ *
+ * 本程序固定共享设备 fd，通过 --cores 1|2|3 选择 core_mask。它复用
+ * core_scaling_benchmark 的七个场景组合，并按当前核心数把每个 Submit 的 Task
+ * 均匀分配到逻辑 lane。
+ *
+ * 每个 worker 先完成预热，再只同步一次正式测量起点；正式阶段连续执行 blocking
+ * Submit，不在轮次之间等待其他线程，也不在相邻 ioctl 之间执行结果校验。预热
+ * Submit 完整校验，正式流水结束后只校验每个线程最后一次 Submit 的完成状态和
+ * 抽样矩阵结果，校验过程不计入吞吐时间。
+ *
+ * 程序还在测试开始前复位驱动 Submit trace，结束后一次性读取 t0～t4 原始记录，
+ * 校验记录数量和时间顺序，再统计提交准备、排队等待、派发执行、完成返回四阶段。
+ */
 
 #include <errno.h>
-#include <math.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <time.h>
-#include <unistd.h>
-
-#include <libdrm/drm.h>
 
 #include "benchmark_stats.h"
 #include "npu_interface.h"
-#include "npu_matmul.h"
 #include "rknpu-ioctl.h"
+#include "rknpu_performance_report.h"
+#include "rknpu_scenario_workload.h"
 
-#define TEST_M 64U
-#define TEST_K 512U
-#define TEST_N 512U
-#define REGCMD_WORDS 112U
-#define REGCMD_BYTES (REGCMD_WORDS * sizeof(uint64_t))
-#define DEFAULT_THREADS 3U
+#define DEFAULT_THREADS 6U
 #define DEFAULT_ROUNDS 100U
 #define DEFAULT_WARMUP_ROUNDS 2U
 #define DEFAULT_NPU_CORES 3U
 #define MAX_NPU_CORES 3U
-#define SUBMIT_TIMEOUT_MS 6000U
 #define MAX_TEST_THREADS 64U
-#define INPUT_LAYOUT_C2 8
-#define OUTPUT_LAYOUT_C2 4
+#define USER_PAGE_SIZE 4096U
 
-/* StarryOS extends the upstream 40-byte create request with two fields. */
-struct rknpu_mem_create_starry {
-    uint32_t handle;
-    uint32_t flags;
-    uint64_t size;
-    uint64_t obj_addr;
-    uint64_t dma_addr;
-    uint64_t sram_size;
-    int32_t iommu_domain_id;
-    uint32_t core_mask;
-};
-
-#define DRM_IOCTL_RKNPU_MEM_CREATE_STARRY                                    \
-    DRM_IOWR(DRM_COMMAND_BASE + RKNPU_MEM_CREATE, struct rknpu_mem_create_starry)
-
-_Static_assert(sizeof(struct rknpu_mem_create_starry) == 48,
-               "StarryOS MEM_CREATE ABI must be 48 bytes");
+/* 编译期固定用户态和驱动共享结构尺寸，避免 ioctl 大小或字段偏移失配。 */
 _Static_assert(sizeof(struct rknpu_task) == 40, "RKNPU task ABI must be 40 bytes");
 _Static_assert(sizeof(struct rknpu_submit) == 104, "RKNPU submit ABI must be 104 bytes");
+_Static_assert(sizeof(struct rknpu_submit_trace_record) == 48,
+               "StarryOS submit trace record ABI must be 48 bytes");
+_Static_assert(sizeof(struct rknpu_submit_trace_query) == 24,
+               "StarryOS submit trace query ABI must be 24 bytes");
+_Static_assert(sizeof(struct rknpu_schedule_trace_record) == 56,
+               "StarryOS schedule trace record ABI must be 56 bytes");
+_Static_assert(sizeof(struct rknpu_schedule_trace_query) == 40,
+               "StarryOS schedule trace query ABI must be 40 bytes");
 
+/* 每核最多保存一个正在执行的 Task，用于严格配对 Dispatch 和 Complete。 */
 typedef struct {
-    void *map;
-    size_t size;
-    uint64_t dma_addr;
-    uint64_t obj_addr;
-    uint32_t handle;
-    int allocated;
-} dma_buffer_t;
+    int busy;
+    uint64_t queue_task;
+    uint32_t task_index;
+    uint64_t dispatch_ns;
+    uint64_t last_complete_ns;
+    uint64_t busy_ns;
+    uint64_t idle_gap_ns;
+    uint64_t max_refill_gap_ns;
+    size_t dispatch_count;
+    size_t complete_count;
+    size_t refill_gap_count;
+} core_usage_t;
 
+/* 三核同时忙的区间通过事件扫描得到，不根据 core_mask 推断。 */
 typedef struct {
-    dma_buffer_t regcmd;
-    dma_buffer_t task;
-    dma_buffer_t input;
-    dma_buffer_t weights;
-    dma_buffer_t output;
-    struct rknpu_submit submit_template;
-} worker_resources_t;
+    uint64_t window_start_ns;
+    uint64_t window_end_ns;
+    uint64_t all_cores_busy_ns;
+} all_core_usage_t;
 
+/* 预热结束后只使用一次的正式测量启动门，同时记录全局测量区间。 */
+typedef struct {
+    /* 保护以下全部状态。 */
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    /* 必须完成预热并到达启动门的 worker 数。 */
+    uint32_t expected_threads;
+    /* 已完成预热的 worker 数。 */
+    uint32_t ready_threads;
+    /* 主线程置位后，全部 worker 开始连续正式 Submit。 */
+    int started;
+    /* 已完成全部正式 Submit、等待统一离开测量区间的 worker 数。 */
+    uint32_t finished_threads;
+    /* 创建线程失败时终止尚未开始正式测量的 worker。 */
+    int stop;
+} stream_gate_t;
+
+/*
+ * 用户态 Submit admission 门，最后修改日期：2026-08-18。
+ * 六个 producer 保持存活，只限制同时进入 blocking Submit ioctl 的线程数。
+ */
 typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-    uint32_t expected_threads;
-    uint32_t ready_threads;
-    uint32_t done_threads;
-    uint32_t generation;
-    uint64_t first_submit_start_us;
-    uint64_t last_submit_end_us;
-    uint32_t completed_submits;
-    int stop;
-} round_gate_t;
+    uint32_t capacity;
+    uint32_t active;
+    uint32_t peak_active;
+} submit_gate_t;
 
+/* 每个 worker 的首个失败分类。 */
 typedef enum {
     WORKER_OK = 0,
     WORKER_IOCTL_FAILED,
@@ -94,20 +111,37 @@ typedef enum {
 } worker_error_t;
 
 typedef struct {
+    /* 线程编号，用于生成该线程独有的矩阵内容和 op_idx。 */
     uint32_t thread_id;
+    /* 所有 worker 共享的 /dev/dri/card1 fd。 */
     int fd;
+    /* 本次实验允许使用的连续核心掩码。 */
     uint32_t core_mask;
+    /* 预热轮和正式测量轮。 */
     uint32_t warmup_rounds;
     uint32_t measure_rounds;
-    round_gate_t *gate;
-    worker_resources_t resources;
+    /* 预热结束后共用的一次性正式测量启动门。 */
+    stream_gate_t *gate;
+    /* 只包围 blocking Submit ioctl，不限制线程创建和结果处理。 */
+    submit_gate_t *submit_gate;
+    /* 当前场景和该线程独占的 GEM、矩阵及 Submit 模板。 */
+    const rknpu_scenario_case_t *scenario;
+    rknpu_scenario_workload_t *workload;
+    /* 正式轮 blocking ioctl 延迟，单位为微秒。 */
     uint64_t *latency_samples_us;
     size_t latency_sample_count;
+    /* 由主线程 join 后汇总为全局连续测量区间，不在热路径中获取共享锁。 */
+    uint64_t first_measured_start_us;
+    uint64_t last_measured_end_us;
+    size_t successful_measured_submits;
+    /* 预热校验通过或正式阶段成功返回的 Submit 数。 */
     uint32_t successful_submits;
+    /* 以下字段保存首个失败及其现场。 */
     worker_error_t error;
     uint32_t error_round;
     int error_errno;
     uint32_t error_task_counter;
+    uint32_t error_task_index;
     uint32_t error_irq_status;
     uint32_t error_row;
     uint32_t error_col;
@@ -116,13 +150,34 @@ typedef struct {
 } worker_context_t;
 
 typedef struct {
+    /* 并发 Submit 线程数。 */
     uint32_t threads;
+    /* 正式测量和预热轮数。 */
     uint32_t rounds;
     uint32_t warmup_rounds;
+    /* --cores 的解析结果。 */
     uint32_t npu_cores;
+    /* 同时允许进入驱动的 blocking Submit 数量。 */
+    uint32_t submit_limit;
+    /* 从 core0 起连续启用：1/2/3 核对应 0x1/0x3/0x7。 */
     uint32_t core_mask;
+    /* 完整场景名称或 all，默认执行全部七个组合。 */
+    const char *scenario_filter;
 } test_options_t;
 
+/* 独立 Schedule Trace 窗口的线程输入，不复用正式性能样本和 PASS 计数。 */
+typedef struct {
+    int fd;
+    uint32_t rounds;
+    uint32_t task_count;
+    stream_gate_t *gate;
+    submit_gate_t *submit_gate;
+    rknpu_scenario_workload_t *workload;
+    int error_errno;
+    uint32_t completed;
+} usage_worker_t;
+
+/* 用户态 blocking ioctl 使用 CLOCK_MONOTONIC 计时，单位为微秒。 */
 static uint64_t now_us(void) {
     struct timespec ts;
 
@@ -130,218 +185,421 @@ static uint64_t now_us(void) {
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
-static int allocate_dma_buffer(
-    int fd,
-    size_t size,
-    uint32_t flags,
-    uint32_t core_mask,
-    dma_buffer_t *buffer
-) {
-    struct rknpu_mem_create_starry create;
-    struct rknpu_mem_map map;
-
-    memset(buffer, 0, sizeof(*buffer));
-    memset(&create, 0, sizeof(create));
-    memset(&map, 0, sizeof(map));
-
-    buffer->size = size;
-    create.flags = flags | RKNPU_MEM_NON_CACHEABLE;
-    create.size = size;
-    create.core_mask = core_mask;
-
-    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_CREATE_STARRY, &create) < 0) {
-        fprintf(stderr, "RKNPU_MEM_CREATE failed: errno=%d (%s)\n",
-                errno, strerror(errno));
+/* 初始化 Submit admission 门；capacity 是允许同时进入驱动的 Submit 数。 */
+static int submit_gate_init(submit_gate_t *gate, uint32_t capacity) {
+    memset(gate, 0, sizeof(*gate));
+    if (capacity == 0U) {
         return -1;
     }
-
-    buffer->allocated = 1;
-    buffer->handle = create.handle;
-    buffer->obj_addr = create.obj_addr;
-    buffer->dma_addr = create.dma_addr;
-
-    map.handle = create.handle;
-    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_MAP, &map) < 0) {
-        fprintf(stderr, "RKNPU_MEM_MAP failed: errno=%d (%s)\n",
-                errno, strerror(errno));
+    gate->capacity = capacity;
+    if (pthread_mutex_init(&gate->mutex, NULL) != 0) {
         return -1;
     }
-
-    buffer->map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, map.offset);
-    if (buffer->map == MAP_FAILED) {
-        fprintf(stderr, "mmap failed: errno=%d (%s)\n", errno, strerror(errno));
+    if (pthread_cond_init(&gate->cond, NULL) != 0) {
+        pthread_mutex_destroy(&gate->mutex);
         return -1;
     }
-
     return 0;
 }
 
-static void release_dma_buffer(int fd, dma_buffer_t *buffer) {
-    if (!buffer->allocated) {
+/* 所有 producer 线程结束后销毁 Submit admission 门。 */
+static void submit_gate_destroy(submit_gate_t *gate) {
+    pthread_cond_destroy(&gate->cond);
+    pthread_mutex_destroy(&gate->mutex);
+}
+
+/* 等待并占用一个 live Submit 名额。 */
+static void submit_gate_acquire(submit_gate_t *gate) {
+    pthread_mutex_lock(&gate->mutex);
+    while (gate->active >= gate->capacity) {
+        pthread_cond_wait(&gate->cond, &gate->mutex);
+    }
+    gate->active++;
+    if (gate->active > gate->peak_active) {
+        gate->peak_active = gate->active;
+    }
+    pthread_mutex_unlock(&gate->mutex);
+}
+
+/* blocking ioctl 返回后立即释放名额，唤醒一个等待的 producer。 */
+static void submit_gate_release(submit_gate_t *gate) {
+    pthread_mutex_lock(&gate->mutex);
+    gate->active--;
+    pthread_cond_signal(&gate->cond);
+    pthread_mutex_unlock(&gate->mutex);
+}
+
+/*
+ * 统一执行受 admission 控制的 blocking Submit，最后修改日期：2026-08-18。
+ * Gate 等待发生在 start_us 之前，release 发生在 end_us 之后，因此单次延迟仍只
+ * 表示 ioctl；全局吞吐窗口会自然包含其他 producer 等待名额的时间。
+ */
+static int run_gated_submit(
+    submit_gate_t *gate,
+    int fd,
+    struct rknpu_submit *submit,
+    uint64_t *start_us,
+    uint64_t *end_us
+) {
+    int result;
+    int saved_errno;
+
+    submit_gate_acquire(gate);
+    if (start_us != NULL) {
+        *start_us = now_us();
+    }
+    result = ioctl(fd, DRM_IOCTL_RKNPU_SUBMIT, submit);
+    saved_errno = errno;
+    if (end_us != NULL) {
+        *end_us = now_us();
+    }
+    submit_gate_release(gate);
+    errno = saved_errno;
+    return result;
+}
+
+/*
+ * 驱动批量 copy-out 前逐页写入接收数组，确保 StarryOS 已为整段用户地址建立物理页。
+ * volatile 防止编译器删除这些只用于触发缺页处理的写操作。
+ */
+static void touch_trace_output_pages(void *buffer, size_t bytes) {
+    volatile unsigned char *output = buffer;
+
+    if (output == NULL || bytes == 0U) {
         return;
     }
-
-    if (buffer->map != NULL && buffer->map != MAP_FAILED) {
-        munmap(buffer->map, buffer->size);
+    for (size_t offset = 0; offset < bytes; offset += USER_PAGE_SIZE) {
+        output[offset] = 0U;
     }
-    mem_destroy(fd, buffer->handle, buffer->obj_addr);
-    memset(buffer, 0, sizeof(*buffer));
+    output[bytes - 1U] = 0U;
 }
 
-static int input_value(uint32_t thread_id, uint32_t row, uint32_t channel) {
-    return ((int)(thread_id * 13U + row * 7U + channel * 5U) % 11) - 5;
+/* 清空驱动固定 trace 缓冲区，保证随后读取的记录只属于本次进程。 */
+static int reset_submit_trace(int fd) {
+    struct rknpu_submit_trace_query query;
+
+    memset(&query, 0, sizeof(query));
+    query.operation = RKNPU_SUBMIT_TRACE_RESET;
+    return ioctl(fd, DRM_IOCTL_RKNPU_SUBMIT_TRACE, &query);
 }
 
-static int weight_value(uint32_t thread_id, uint32_t column, uint32_t channel) {
-    return ((int)(thread_id * 17U + column * 3U + channel * 9U) % 11) - 5;
+/*
+ * 测试结束后一次性读取驱动保存的 t0～t4，避免逐 Submit 串口日志扰动时序。
+ * records 由用户态分配，capacity 以记录条数为单位，驱动通过 query 返回实际数量。
+ */
+static int read_submit_trace(
+    int fd,
+    struct rknpu_submit_trace_record *records,
+    uint32_t capacity,
+    struct rknpu_submit_trace_query *query
+) {
+    memset(query, 0, sizeof(*query));
+    query->operation = RKNPU_SUBMIT_TRACE_READ;
+    query->capacity = capacity;
+    query->records_address = (uint64_t)(uintptr_t)records;
+    return ioctl(fd, DRM_IOCTL_RKNPU_SUBMIT_TRACE, query);
 }
 
-static void prepare_operands(worker_context_t *worker) {
-    _Float16 *input = worker->resources.input.map;
-    _Float16 *weights = worker->resources.weights.map;
-    uint32_t matrix_id = worker->thread_id + 1U;
+/* 配置并清空调度事件；event_mask=0 用于关闭记录。 */
+static int configure_schedule_trace(int fd, uint32_t event_mask) {
+    struct rknpu_schedule_trace_query query;
 
-    memset(input, 0, worker->resources.input.size);
-    memset(weights, 0, worker->resources.weights.size);
+    memset(&query, 0, sizeof(query));
+    query.operation = RKNPU_SCHEDULE_TRACE_CONFIG_RESET;
+    query.event_mask = event_mask;
+    return ioctl(fd, DRM_IOCTL_RKNPU_SCHEDULE_TRACE, &query);
+}
 
-    for (uint32_t row = 0; row < TEST_M; row++) {
-        for (uint32_t channel = 0; channel < TEST_K; channel++) {
-            int offset = feature_data(
-                TEST_K,
-                TEST_M,
-                1,
-                INPUT_LAYOUT_C2,
-                channel + 1U,
-                row + 1U,
-                1
-            );
-            input[offset] = (_Float16)input_value(matrix_id, row, channel);
+/* 一次性读取固定缓冲区中的调度事件；读取不会消费或清空记录。 */
+static int read_schedule_trace(
+    int fd,
+    struct rknpu_schedule_trace_record *records,
+    uint32_t capacity,
+    struct rknpu_schedule_trace_query *query
+) {
+    memset(query, 0, sizeof(*query));
+    query->operation = RKNPU_SCHEDULE_TRACE_READ;
+    query->capacity = capacity;
+    query->records_address = (uint64_t)(uintptr_t)records;
+    return ioctl(fd, DRM_IOCTL_RKNPU_SCHEDULE_TRACE, query);
+}
+
+static uint32_t busy_core_count(const core_usage_t *cores, uint32_t npu_cores) {
+    uint32_t count = 0;
+
+    for (uint32_t core = 0; core < npu_cores; core++) {
+        if (cores[core].busy) {
+            count++;
         }
     }
-
-    for (uint32_t column = 0; column < TEST_N; column++) {
-        for (uint32_t channel = 0; channel < TEST_K; channel++) {
-            int offset = weight_fp16(TEST_K, column + 1U, channel + 1U);
-            weights[offset] = (_Float16)weight_value(matrix_id, column, channel);
-        }
-    }
+    return count;
 }
 
-static int prepare_task(worker_context_t *worker) {
-    uint64_t regcmd_words[REGCMD_WORDS];
-    struct rknpu_task *task = worker->resources.task.map;
-    matmul_params_t params;
+/* 相同时间戳按原始 sequence 排序，保证同一时刻的事件顺序稳定。 */
+static int compare_schedule_timestamp(const void *left_ptr, const void *right_ptr) {
+    const struct rknpu_schedule_trace_record *left = left_ptr;
+    const struct rknpu_schedule_trace_record *right = right_ptr;
 
-    memset(regcmd_words, 0, sizeof(regcmd_words));
-    memset(task, 0, sizeof(*task));
+    if (left->timestamp_ns != right->timestamp_ns) {
+        return left->timestamp_ns < right->timestamp_ns ? -1 : 1;
+    }
+    return left->sequence < right->sequence ? -1 : left->sequence > right->sequence;
+}
 
-    params.m = TEST_M;
-    params.k = TEST_K;
-    params.n = TEST_N;
-    params.input_dma = (uint32_t)worker->resources.input.dma_addr;
-    params.weights_dma = (uint32_t)worker->resources.weights.dma_addr;
-    params.output_dma = (uint32_t)worker->resources.output.dma_addr;
-    params.tasks = regcmd_words;
-    params.fp32tofp16 = 0;
+/*
+ * 严格按事件顺序配对同一物理核心上的 Dispatch/Complete。
+ * busy_ns 是 Task 在该核心从下发到完成的区间和；refill gap 是该核心完成一个
+ * Task 到下一个 Task 下发的时间。任何缺失、重复或核心越界都会拒绝利用率结论。
+ */
+static int report_core_usage(
+    struct rknpu_schedule_trace_record *records,
+    size_t record_count,
+    uint32_t npu_cores,
+    size_t expected_tasks
+) {
+    core_usage_t cores[MAX_NPU_CORES] = {0};
+    all_core_usage_t all = {0};
+    uint64_t previous_timestamp_ns = 0;
+    size_t dispatch_total = 0;
+    size_t complete_total = 0;
 
-    if (gen_matmul_fp16(&params) != 0) {
+    if (record_count == 0U || npu_cores == 0U || npu_cores > MAX_NPU_CORES) {
         return -1;
     }
 
-    memcpy(worker->resources.regcmd.map, regcmd_words, sizeof(regcmd_words));
+    /* sequence 先证明记录完整，再按事件时间排序计算区间。 */
+    for (size_t index = 0; index < record_count; index++) {
+        if (records[index].sequence != index || records[index].queue_task == 0U ||
+            records[index].core_slot >= npu_cores) {
+            fprintf(stderr, "invalid core usage trace at index=%zu\n", index);
+            return -1;
+        }
+    }
+    qsort(records, record_count, sizeof(*records), compare_schedule_timestamp);
 
-    task->flags = 0;
-    task->op_idx = worker->thread_id;
-    task->enable_mask = 0xd;
-    task->int_mask = 0x300;
-    task->int_clear = 0x1ffff;
-    task->int_status = 0;
-    task->regcfg_amount = REGCMD_WORDS - (RKNPU_PC_DATA_EXTRA_AMOUNT + 4U);
-    task->regcfg_offset = 0;
-    task->regcmd_addr = worker->resources.regcmd.dma_addr;
+    for (size_t index = 0; index < record_count; index++) {
+        const struct rknpu_schedule_trace_record *record = &records[index];
+        core_usage_t *core;
 
-    memset(&worker->resources.submit_template, 0, sizeof(worker->resources.submit_template));
-    worker->resources.submit_template.flags =
-        RKNPU_JOB_PC | RKNPU_JOB_BLOCK | RKNPU_JOB_PINGPONG;
-    worker->resources.submit_template.timeout = SUBMIT_TIMEOUT_MS;
-    worker->resources.submit_template.task_number = 1;
-    worker->resources.submit_template.task_obj_addr = worker->resources.task.obj_addr;
-    worker->resources.submit_template.core_mask = worker->core_mask;
-    worker->resources.submit_template.fence_fd = -1;
+        if (index == 0U) {
+            all.window_start_ns = record->timestamp_ns;
+        } else if (busy_core_count(cores, npu_cores) == npu_cores) {
+            all.all_cores_busy_ns += record->timestamp_ns - previous_timestamp_ns;
+        }
+        previous_timestamp_ns = record->timestamp_ns;
+        all.window_end_ns = record->timestamp_ns;
+        core = &cores[record->core_slot];
 
-    /* 单逻辑通道允许多个独立 Submit 在所选物理核心之间竞争。 */
-    worker->resources.submit_template.subcore_task[0].task_start = 0;
-    worker->resources.submit_template.subcore_task[0].task_number = 1;
+        if (record->event_type == RKNPU_SCHEDULE_EVENT_DISPATCH) {
+            uint64_t refill_gap_ns;
+
+            if (core->busy) {
+                fprintf(stderr, "core%u dispatched while already busy\n", record->core_slot);
+                return -1;
+            }
+            if (core->complete_count > 0U) {
+                if (record->timestamp_ns < core->last_complete_ns) {
+                    return -1;
+                }
+                refill_gap_ns = record->timestamp_ns - core->last_complete_ns;
+                core->idle_gap_ns += refill_gap_ns;
+                if (refill_gap_ns > core->max_refill_gap_ns) {
+                    core->max_refill_gap_ns = refill_gap_ns;
+                }
+                core->refill_gap_count++;
+            }
+            core->busy = 1;
+            core->queue_task = record->queue_task;
+            core->task_index = record->task_index;
+            core->dispatch_ns = record->timestamp_ns;
+            core->dispatch_count++;
+            dispatch_total++;
+        } else if (record->event_type == RKNPU_SCHEDULE_EVENT_COMPLETE) {
+            if (!core->busy || core->queue_task != record->queue_task ||
+                core->task_index != record->task_index ||
+                record->timestamp_ns < core->dispatch_ns) {
+                fprintf(stderr, "unmatched completion at index=%zu core=%u\n",
+                        index, record->core_slot);
+                return -1;
+            }
+            core->busy_ns += record->timestamp_ns - core->dispatch_ns;
+            core->last_complete_ns = record->timestamp_ns;
+            core->complete_count++;
+            core->busy = 0;
+            complete_total++;
+        } else {
+            fprintf(stderr, "unexpected core usage event at index=%zu type=0x%x\n",
+                    index, record->event_type);
+            return -1;
+        }
+    }
+
+    if (dispatch_total != expected_tasks || complete_total != expected_tasks ||
+        all.window_end_ns <= all.window_start_ns) {
+        fprintf(stderr,
+                "core usage event mismatch: dispatch=%zu complete=%zu expected=%zu\n",
+                dispatch_total, complete_total, expected_tasks);
+        return -1;
+    }
+    for (uint32_t core = 0; core < npu_cores; core++) {
+        if (cores[core].busy || cores[core].dispatch_count != cores[core].complete_count ||
+            cores[core].dispatch_count == 0U) {
+            fprintf(stderr, "core%u has incomplete or empty event stream\n", core);
+            return -1;
+        }
+    }
+
+    {
+        uint64_t trace_window_ns = all.window_end_ns - all.window_start_ns;
+        size_t min_core_tasks = cores[0].dispatch_count;
+        size_t max_core_tasks = cores[0].dispatch_count;
+
+        printf("per-core Schedule Trace usage\n");
+        printf("  trace tasks     : %zu Dispatch + %zu Complete\n",
+               dispatch_total, complete_total);
+        printf("  trace window    : %.3f ms\n", (double)trace_window_ns / 1000000.0);
+        for (uint32_t core = 0; core < npu_cores; core++) {
+            double utilization = (double)cores[core].busy_ns * 100.0 /
+                (double)trace_window_ns;
+            double mean_refill_us = cores[core].refill_gap_count > 0U
+                ? (double)cores[core].idle_gap_ns /
+                    (double)cores[core].refill_gap_count / 1000.0
+                : 0.0;
+
+            printf("  core%u           : tasks=%zu busy=%9.3f ms util=%6.2f%% "
+                   "refill mean/max=%8.3f/%8.3f us\n",
+                   core, cores[core].dispatch_count,
+                   (double)cores[core].busy_ns / 1000000.0,
+                   utilization, mean_refill_us,
+                   (double)cores[core].max_refill_gap_ns / 1000.0);
+            if (cores[core].dispatch_count < min_core_tasks) {
+                min_core_tasks = cores[core].dispatch_count;
+            }
+            if (cores[core].dispatch_count > max_core_tasks) {
+                max_core_tasks = cores[core].dispatch_count;
+            }
+        }
+        printf("  dispatch balance: min=%zu max=%zu difference=%zu tasks\n",
+               min_core_tasks, max_core_tasks, max_core_tasks - min_core_tasks);
+        printf("  all-core busy   : %9.3f ms (%6.2f%% of trace window)\n",
+               (double)all.all_cores_busy_ns / 1000000.0,
+               (double)all.all_cores_busy_ns * 100.0 / (double)trace_window_ns);
+    }
     return 0;
 }
 
+/* 对一个阶段的纳秒样本计算 Mean/P50/P95/P99，并在输出时换算为毫秒。 */
+static int print_phase_stats(const char *name, uint64_t *samples_ns, size_t count) {
+    benchmark_latency_stats_t stats;
+
+    if (benchmark_compute_latency_stats(samples_ns, count, &stats) != 0) {
+        return -1;
+    }
+
+    printf("  %-17s mean=%9.6f ms  P50=%9.6f ms  P95=%9.6f ms  P99=%9.6f ms\n",
+           name,
+           stats.mean_us / 1000000.0,
+           (double)stats.p50_us / 1000000.0,
+           (double)stats.p95_us / 1000000.0,
+           (double)stats.p99_us / 1000000.0);
+    return 0;
+}
+
+/*
+ * 先校验全部记录满足 queue_task!=0 和 t0<=t1<=t2<=t3<=t4，随后跳过
+ * warmup_count 条记录，分别计算 t1-t0、t2-t1、t3-t2、t4-t3。
+ * 记录不完整或任一时间倒序都会使本次实验 FAIL，禁止用残缺样本得出阶段结论。
+ */
+static int report_submit_trace(
+    const struct rknpu_submit_trace_record *records,
+    size_t record_count,
+    size_t warmup_count
+) {
+    uint64_t *samples_ns;
+    size_t measured_count;
+
+    if (warmup_count >= record_count) {
+        return -1;
+    }
+    for (size_t index = 0; index < record_count; index++) {
+        const struct rknpu_submit_trace_record *record = &records[index];
+        if (record->queue_task == 0U ||
+            record->t0_ns > record->t1_ns ||
+            record->t1_ns > record->t2_ns ||
+            record->t2_ns > record->t3_ns ||
+            record->t3_ns > record->t4_ns) {
+            fprintf(stderr, "invalid submit trace record at index=%zu queue_task=%llu\n",
+                    index, (unsigned long long)record->queue_task);
+            return -1;
+        }
+    }
+
+    measured_count = record_count - warmup_count;
+    samples_ns = malloc(measured_count * sizeof(*samples_ns));
+    if (samples_ns == NULL) {
+        return -1;
+    }
+
+    for (size_t index = 0; index < measured_count; index++) {
+        const struct rknpu_submit_trace_record *record = &records[warmup_count + index];
+        samples_ns[index] = record->t1_ns - record->t0_ns;
+    }
+    if (print_phase_stats("submit_prepare", samples_ns, measured_count) != 0) {
+        free(samples_ns);
+        return -1;
+    }
+
+    for (size_t index = 0; index < measured_count; index++) {
+        const struct rknpu_submit_trace_record *record = &records[warmup_count + index];
+        samples_ns[index] = record->t2_ns - record->t1_ns;
+    }
+    if (print_phase_stats("queue_wait", samples_ns, measured_count) != 0) {
+        free(samples_ns);
+        return -1;
+    }
+
+    for (size_t index = 0; index < measured_count; index++) {
+        const struct rknpu_submit_trace_record *record = &records[warmup_count + index];
+        samples_ns[index] = record->t3_ns - record->t2_ns;
+    }
+    if (print_phase_stats("dispatch_execute", samples_ns, measured_count) != 0) {
+        free(samples_ns);
+        return -1;
+    }
+
+    for (size_t index = 0; index < measured_count; index++) {
+        const struct rknpu_submit_trace_record *record = &records[warmup_count + index];
+        samples_ns[index] = record->t4_ns - record->t3_ns;
+    }
+    if (print_phase_stats("complete_return", samples_ns, measured_count) != 0) {
+        free(samples_ns);
+        return -1;
+    }
+
+    free(samples_ns);
+    return 0;
+}
+
+/* 释放场景模块为该 worker 创建的全部 GEM。 */
 static void release_worker_resources(worker_context_t *worker) {
-    release_dma_buffer(worker->fd, &worker->resources.output);
-    release_dma_buffer(worker->fd, &worker->resources.weights);
-    release_dma_buffer(worker->fd, &worker->resources.input);
-    release_dma_buffer(worker->fd, &worker->resources.task);
-    release_dma_buffer(worker->fd, &worker->resources.regcmd);
+    rknpu_scenario_workload_destroy(worker->workload);
+    worker->workload = NULL;
 }
 
-static int prepare_worker_resources(worker_context_t *worker) {
-    if (allocate_dma_buffer(
-            worker->fd,
-            REGCMD_BYTES,
-            0,
-            worker->core_mask,
-            &worker->resources.regcmd
-        ) != 0 ||
-        allocate_dma_buffer(
-            worker->fd,
-            sizeof(struct rknpu_task),
-            RKNPU_MEM_KERNEL_MAPPING,
-            worker->core_mask,
-            &worker->resources.task
-        ) != 0 ||
-        allocate_dma_buffer(
-            worker->fd,
-            TEST_M * TEST_K * sizeof(_Float16),
-            0,
-            worker->core_mask,
-            &worker->resources.input
-        ) != 0 ||
-        allocate_dma_buffer(
-            worker->fd,
-            TEST_N * TEST_K * sizeof(_Float16),
-            0,
-            worker->core_mask,
-            &worker->resources.weights
-        ) != 0 ||
-        allocate_dma_buffer(
-            worker->fd,
-            TEST_M * TEST_N * sizeof(float),
-            0,
-            worker->core_mask,
-            &worker->resources.output
-        ) != 0) {
-        release_worker_resources(worker);
-        return -1;
-    }
-
-    if (worker->resources.input.dma_addr > UINT32_MAX ||
-        worker->resources.weights.dma_addr > UINT32_MAX ||
-        worker->resources.output.dma_addr > UINT32_MAX) {
-        fprintf(stderr, "matmul data DMA address exceeds the 32-bit generator interface\n");
-        release_worker_resources(worker);
-        return -1;
-    }
-
-    prepare_operands(worker);
-    memset(worker->resources.output.map, 0, worker->resources.output.size);
-
-    if (prepare_task(worker) != 0) {
-        release_worker_resources(worker);
-        return -1;
-    }
-    return 0;
+/* 在线程启动前按当前核心数创建多 Task 资源和逻辑 lane。 */
+static int prepare_worker_resources(worker_context_t *worker, uint32_t npu_cores) {
+    return rknpu_scenario_workload_create(
+        worker->fd,
+        worker->thread_id,
+        worker->scenario,
+        npu_cores,
+        worker->core_mask,
+        &worker->workload
+    );
 }
 
-static int round_gate_init(round_gate_t *gate, uint32_t expected_threads) {
+/* 初始化一次性正式测量启动门。 */
+static int stream_gate_init(stream_gate_t *gate, uint32_t expected_threads) {
     memset(gate, 0, sizeof(*gate));
     gate->expected_threads = expected_threads;
 
@@ -355,28 +613,32 @@ static int round_gate_init(round_gate_t *gate, uint32_t expected_threads) {
     return 0;
 }
 
-static void round_gate_stop(round_gate_t *gate) {
+/* 设置停止标志并广播，解除所有等待开始或结束条件的线程。 */
+static void stream_gate_stop(stream_gate_t *gate) {
     pthread_mutex_lock(&gate->mutex);
     gate->stop = 1;
     pthread_cond_broadcast(&gate->cond);
     pthread_mutex_unlock(&gate->mutex);
 }
 
-static void round_gate_destroy(round_gate_t *gate) {
+/* 所有 pthread join 后销毁条件变量和互斥锁。 */
+static void stream_gate_destroy(stream_gate_t *gate) {
     pthread_cond_destroy(&gate->cond);
     pthread_mutex_destroy(&gate->mutex);
 }
 
-static int worker_wait_for_round(round_gate_t *gate) {
-    uint32_t generation;
+/*
+ * worker 完成全部预热后报告 ready，只等待一次 started。返回 0 表示线程创建
+ * 失败后主线程取消了实验，不进入正式 Submit。
+ */
+static int worker_wait_for_stream_start(stream_gate_t *gate) {
     int should_run;
 
     pthread_mutex_lock(&gate->mutex);
-    generation = gate->generation;
     gate->ready_threads++;
     pthread_cond_broadcast(&gate->cond);
 
-    while (!gate->stop && generation == gate->generation) {
+    while (!gate->stop && !gate->started) {
         pthread_cond_wait(&gate->cond, &gate->mutex);
     }
     should_run = !gate->stop;
@@ -384,39 +646,8 @@ static int worker_wait_for_round(round_gate_t *gate) {
     return should_run;
 }
 
-static void worker_finish_round(round_gate_t *gate) {
-    pthread_mutex_lock(&gate->mutex);
-    gate->done_threads++;
-    pthread_cond_broadcast(&gate->cond);
-    pthread_mutex_unlock(&gate->mutex);
-}
-
-/* 最后修改：2026-08-04
- * 吞吐量只统计每轮 blocking submit 的实际活跃时间。
- */
-static void worker_record_submit_window(
-    round_gate_t *gate,
-    uint64_t start_us,
-    uint64_t end_us
-) {
-    pthread_mutex_lock(&gate->mutex);
-    if (gate->completed_submits == 0U || start_us < gate->first_submit_start_us) {
-        gate->first_submit_start_us = start_us;
-    }
-    if (gate->completed_submits == 0U || end_us > gate->last_submit_end_us) {
-        gate->last_submit_end_us = end_us;
-    }
-    gate->completed_submits++;
-    pthread_mutex_unlock(&gate->mutex);
-}
-
-static int run_synchronized_round(
-    round_gate_t *gate,
-    uint64_t *submit_window_us,
-    uint32_t *completed_submits
-) {
-    int stopped;
-
+/* 主线程等待全部 worker 完成预热，然后只广播一次正式测量开始。 */
+static int stream_gate_start(stream_gate_t *gate) {
     pthread_mutex_lock(&gate->mutex);
     while (!gate->stop && gate->ready_threads < gate->expected_threads) {
         pthread_cond_wait(&gate->cond, &gate->mutex);
@@ -426,142 +657,310 @@ static int run_synchronized_round(
         return -1;
     }
 
-    gate->ready_threads = 0;
-    gate->done_threads = 0;
-    gate->first_submit_start_us = 0;
-    gate->last_submit_end_us = 0;
-    gate->completed_submits = 0;
-    gate->generation++;
+    gate->started = 1;
     pthread_cond_broadcast(&gate->cond);
-
-    while (!gate->stop && gate->done_threads < gate->expected_threads) {
-        pthread_cond_wait(&gate->cond, &gate->mutex);
-    }
-    *completed_submits = gate->completed_submits;
-    if (gate->completed_submits > 0U &&
-        gate->last_submit_end_us >= gate->first_submit_start_us) {
-        *submit_window_us = gate->last_submit_end_us - gate->first_submit_start_us;
-    } else {
-        *submit_window_us = 0;
-    }
-    stopped = gate->stop;
     pthread_mutex_unlock(&gate->mutex);
-    return stopped ? -1 : 0;
-}
-
-static float expected_output(
-    uint32_t matrix_id,
-    uint32_t row,
-    uint32_t column
-) {
-    float sum = 0.0f;
-
-    for (uint32_t channel = 0; channel < TEST_K; channel++) {
-        sum += (float)input_value(matrix_id, row, channel) *
-            (float)weight_value(matrix_id, column, channel);
-    }
-    return sum;
-}
-
-static int verify_output(worker_context_t *worker) {
-    static const uint32_t rows[] = {0U, 3U};
-    static const uint32_t columns[] = {0U, 3U};
-    const float *output = worker->resources.output.map;
-    uint32_t matrix_id = worker->thread_id + 1U;
-
-    for (size_t row_index = 0; row_index < sizeof(rows) / sizeof(rows[0]); row_index++) {
-        for (size_t column_index = 0;
-             column_index < sizeof(columns) / sizeof(columns[0]);
-             column_index++) {
-            uint32_t row = rows[row_index];
-            uint32_t column = columns[column_index];
-            int offset = feature_data(
-                TEST_N,
-                TEST_M,
-                1,
-                OUTPUT_LAYOUT_C2,
-                column + 1U,
-                row + 1U,
-                1
-            );
-            float expected = expected_output(matrix_id, row, column);
-            float actual = output[offset];
-
-            if (fabsf(actual - expected) > 0.001f) {
-                worker->error_row = row;
-                worker->error_col = column;
-                worker->error_expected = expected;
-                worker->error_actual = actual;
-                return -1;
-            }
-        }
-    }
     return 0;
 }
 
-static int run_worker_submit(worker_context_t *worker, uint32_t round) {
-    struct rknpu_task *task = worker->resources.task.map;
-    struct rknpu_submit submit = worker->resources.submit_template;
-    uint64_t start_us;
-    uint64_t end_us;
+/*
+ * 所有 worker 完成最后一个正式 Submit 后再统一开始抽样校验，避免先结束的线程
+ * 在其他线程仍测量时占用 CPU。该门只使用一次，不会在 Submit 之间制造空档。
+ */
+static void worker_wait_for_stream_finish(stream_gate_t *gate) {
+    pthread_mutex_lock(&gate->mutex);
+    gate->finished_threads++;
+    if (gate->finished_threads == gate->expected_threads) {
+        pthread_cond_broadcast(&gate->cond);
+    } else {
+        while (gate->finished_threads < gate->expected_threads) {
+            pthread_cond_wait(&gate->cond, &gate->mutex);
+        }
+    }
+    pthread_mutex_unlock(&gate->mutex);
+}
 
-    memset(worker->resources.output.map, 0, worker->resources.output.size);
-    task->int_status = 0;
+/*
+ * 预热 Submit 保留完整清理和结果校验，确保正式测量开始前硬件与测试数据正确。
+ */
+static int run_checked_submit(worker_context_t *worker, uint32_t round) {
+    struct rknpu_submit submit;
+    rknpu_scenario_check_t check;
 
-    start_us = now_us();
-    if (ioctl(worker->fd, DRM_IOCTL_RKNPU_SUBMIT, &submit) < 0) {
+    rknpu_scenario_workload_begin(worker->workload, &submit);
+
+    if (run_gated_submit(worker->submit_gate, worker->fd, &submit, NULL, NULL) < 0) {
         worker->error = WORKER_IOCTL_FAILED;
         worker->error_errno = errno;
         worker->error_round = round;
         return -1;
     }
-    end_us = now_us();
-
-    if (submit.task_counter != 1U) {
-        worker->error = WORKER_TASK_COUNTER_FAILED;
-        worker->error_task_counter = submit.task_counter;
+    if (rknpu_scenario_workload_check(worker->workload, &submit, &check) != 0) {
         worker->error_round = round;
-        return -1;
-    }
-    if (task->int_status != 0x300U) {
-        worker->error = WORKER_IRQ_STATUS_FAILED;
-        worker->error_irq_status = task->int_status;
-        worker->error_round = round;
-        return -1;
-    }
-    if (verify_output(worker) != 0) {
-        worker->error = WORKER_OUTPUT_FAILED;
-        worker->error_round = round;
+        worker->error_task_index = check.task_index;
+        worker->error_task_counter = check.task_counter;
+        worker->error_irq_status = check.irq_status;
+        worker->error_row = check.row;
+        worker->error_col = check.column;
+        worker->error_expected = check.expected;
+        worker->error_actual = check.actual;
+        if (check.error == RKNPU_SCENARIO_CHECK_TASK_COUNTER) {
+            worker->error = WORKER_TASK_COUNTER_FAILED;
+        } else if (check.error == RKNPU_SCENARIO_CHECK_IRQ_STATUS) {
+            worker->error = WORKER_IRQ_STATUS_FAILED;
+        } else {
+            worker->error = WORKER_OUTPUT_FAILED;
+        }
         return -1;
     }
 
     worker->successful_submits++;
-    worker_record_submit_window(worker->gate, start_us, end_us);
-    if (round >= worker->warmup_rounds) {
-        worker->latency_samples_us[worker->latency_sample_count++] = end_us - start_us;
-    }
     return 0;
 }
 
+/*
+ * pthread 入口。各线程自行完成预热，然后在同一个起点开始连续 blocking Submit。
+ * 正式阶段的 ioctl 返回后只保存时间和返回结构，立即发起下一次 Submit；所有正式
+ * Submit 结束后才抽样校验最后一次完成状态，避免逐轮校验制造喂料空档。
+ */
 static void *worker_main(void *arg) {
     worker_context_t *worker = arg;
-    uint32_t total_rounds = worker->warmup_rounds + worker->measure_rounds;
+    struct rknpu_submit last_submit;
+    int has_last_submit = 0;
 
-    for (uint32_t round = 0; round < total_rounds; round++) {
-        if (!worker_wait_for_round(worker->gate)) {
+    for (uint32_t round = 0; round < worker->warmup_rounds; round++) {
+        if (run_checked_submit(worker, round) != 0) {
             break;
         }
+    }
 
-        if (worker->error == WORKER_OK) {
-            run_worker_submit(worker, round);
+    if (!worker_wait_for_stream_start(worker->gate)) {
+        return NULL;
+    }
+
+    if (worker->error == WORKER_OK) {
+        for (uint32_t round = 0; round < worker->measure_rounds; round++) {
+            struct rknpu_submit submit;
+            uint64_t start_us;
+            uint64_t end_us;
+
+            rknpu_scenario_workload_next_submit(worker->workload, &submit);
+            if (run_gated_submit(
+                    worker->submit_gate, worker->fd, &submit, &start_us, &end_us
+                ) < 0) {
+                worker->error = WORKER_IOCTL_FAILED;
+                worker->error_errno = errno;
+                worker->error_round = worker->warmup_rounds + round;
+                break;
+            }
+
+            if (worker->successful_measured_submits == 0U) {
+                worker->first_measured_start_us = start_us;
+            }
+            worker->last_measured_end_us = end_us;
+            worker->latency_samples_us[worker->latency_sample_count++] = end_us - start_us;
+            worker->successful_measured_submits++;
+            worker->successful_submits++;
+            /* 只保留最后一个正式 Submit，避免在每轮热路径复制返回结构。 */
+            if (round + 1U == worker->measure_rounds) {
+                last_submit = submit;
+                has_last_submit = 1;
+            }
         }
+    }
 
-        /* A failed worker stays in the round protocol so peers cannot deadlock. */
-        worker_finish_round(worker->gate);
+    /* 全部 worker 先完成正式流水，随后才执行计时区间外的抽样校验。 */
+    worker_wait_for_stream_finish(worker->gate);
+
+    /* 只校验最后一次正式 Submit，不扫描每轮结果。 */
+    if (worker->error == WORKER_OK && has_last_submit) {
+        rknpu_scenario_check_t check;
+
+        if (rknpu_scenario_workload_check(worker->workload, &last_submit, &check) != 0) {
+            worker->error_round = worker->warmup_rounds + worker->measure_rounds - 1U;
+            worker->error_task_index = check.task_index;
+            worker->error_task_counter = check.task_counter;
+            worker->error_irq_status = check.irq_status;
+            worker->error_row = check.row;
+            worker->error_col = check.column;
+            worker->error_expected = check.expected;
+            worker->error_actual = check.actual;
+            if (check.error == RKNPU_SCENARIO_CHECK_TASK_COUNTER) {
+                worker->error = WORKER_TASK_COUNTER_FAILED;
+            } else if (check.error == RKNPU_SCENARIO_CHECK_IRQ_STATUS) {
+                worker->error = WORKER_IRQ_STATUS_FAILED;
+            } else {
+                worker->error = WORKER_OUTPUT_FAILED;
+            }
+        }
     }
     return NULL;
 }
 
+/*
+ * 利用率窗口仍是连续 Submit，只在启动处同步一次。该窗口不计用户态性能，目的仅是
+ * 生成完整的 Dispatch/Complete 事件流；最后一次 Submit 结束后检查返回计数。
+ */
+static void *usage_worker_main(void *arg) {
+    usage_worker_t *worker = arg;
+    struct rknpu_submit last_submit;
+    int has_last_submit = 0;
+
+    if (!worker_wait_for_stream_start(worker->gate)) {
+        return NULL;
+    }
+    for (uint32_t round = 0; round < worker->rounds; round++) {
+        struct rknpu_submit submit;
+
+        rknpu_scenario_workload_next_submit(worker->workload, &submit);
+        if (run_gated_submit(
+                worker->submit_gate, worker->fd, &submit, NULL, NULL
+            ) < 0) {
+            worker->error_errno = errno;
+            break;
+        }
+        last_submit = submit;
+        has_last_submit = 1;
+        worker->completed++;
+    }
+    if (worker->error_errno == 0 &&
+        (!has_last_submit || last_submit.task_counter != worker->task_count)) {
+        worker->error_errno = EPROTO;
+    }
+    return NULL;
+}
+
+/*
+ * 在正式性能和四阶段统计完成后运行一个独立短窗口。轮数由固定 trace 容量推导，
+ * 只启用 Dispatch/Complete，确保所有事件完整保存后才计算每核利用率。
+ */
+static int run_core_usage_window(
+    int fd,
+    worker_context_t *workers,
+    uint32_t thread_count,
+    uint32_t npu_cores,
+    uint32_t task_count,
+    submit_gate_t *submit_gate
+) {
+    usage_worker_t *usage_workers = NULL;
+    pthread_t *threads = NULL;
+    struct rknpu_schedule_trace_record *records = NULL;
+    struct rknpu_schedule_trace_query query;
+    stream_gate_t gate;
+    size_t events_per_round;
+    size_t expected_events;
+    size_t expected_tasks;
+    uint32_t rounds;
+    uint32_t created_threads = 0;
+    int gate_initialized = 0;
+    int result = -1;
+
+    events_per_round = (size_t)thread_count * task_count * 2U;
+    if (events_per_round == 0U || events_per_round > RKNPU_SCHEDULE_TRACE_CAPACITY) {
+        fprintf(stderr, "one core-usage round exceeds Schedule Trace capacity\n");
+        return -1;
+    }
+    rounds = (uint32_t)(RKNPU_SCHEDULE_TRACE_CAPACITY / events_per_round);
+    if (rounds > 10U) {
+        rounds = 10U;
+    }
+    expected_tasks = (size_t)thread_count * rounds * task_count;
+    expected_events = expected_tasks * 2U;
+
+    usage_workers = calloc(thread_count, sizeof(*usage_workers));
+    threads = calloc(thread_count, sizeof(*threads));
+    records = calloc(expected_events, sizeof(*records));
+    if (usage_workers == NULL || threads == NULL || records == NULL) {
+        goto cleanup;
+    }
+    /* Trace 尚未开启，此处预建接收页不会进入逐核利用率统计窗口。 */
+    touch_trace_output_pages(records, expected_events * sizeof(*records));
+    if (stream_gate_init(&gate, thread_count) != 0) {
+        goto cleanup;
+    }
+    gate_initialized = 1;
+
+    if (configure_schedule_trace(
+            fd,
+            RKNPU_SCHEDULE_EVENT_DISPATCH | RKNPU_SCHEDULE_EVENT_COMPLETE
+        ) < 0) {
+        fprintf(stderr, "Schedule Trace configuration failed: errno=%d (%s)\n",
+                errno, strerror(errno));
+        goto cleanup;
+    }
+
+    printf("core usage trace window\n");
+    printf("  rounds          : %u continuous rounds per thread\n", rounds);
+    printf("  expected events : %zu/%u capacity\n",
+           expected_events, RKNPU_SCHEDULE_TRACE_CAPACITY);
+
+    for (uint32_t index = 0; index < thread_count; index++) {
+        usage_workers[index].fd = fd;
+        usage_workers[index].rounds = rounds;
+        usage_workers[index].task_count = task_count;
+        usage_workers[index].gate = &gate;
+        usage_workers[index].submit_gate = submit_gate;
+        usage_workers[index].workload = workers[index].workload;
+        {
+            int error = pthread_create(
+                &threads[index], NULL, usage_worker_main, &usage_workers[index]);
+            if (error != 0) {
+                fprintf(stderr, "usage pthread_create failed: %s\n", strerror(error));
+                stream_gate_stop(&gate);
+                goto join_threads;
+            }
+        }
+        created_threads++;
+    }
+
+    if (stream_gate_start(&gate) != 0) {
+        goto join_threads;
+    }
+
+join_threads:
+    for (uint32_t index = 0; index < created_threads; index++) {
+        pthread_join(threads[index], NULL);
+    }
+    if (created_threads != thread_count) {
+        goto cleanup;
+    }
+    for (uint32_t index = 0; index < thread_count; index++) {
+        if (usage_workers[index].error_errno != 0 ||
+            usage_workers[index].completed != rounds) {
+            fprintf(stderr,
+                    "usage worker[%u] incomplete: completed=%u/%u errno=%d\n",
+                    index, usage_workers[index].completed, rounds,
+                    usage_workers[index].error_errno);
+            goto cleanup;
+        }
+    }
+
+    if (read_schedule_trace(fd, records, (uint32_t)expected_events, &query) < 0 ||
+        query.count != expected_events || query.overflowed != 0U) {
+        fprintf(stderr,
+                "Schedule Trace incomplete: count=%u/%zu overflow=%u errno=%d\n",
+                query.count, expected_events, query.overflowed, errno);
+        goto cleanup;
+    }
+    result = report_core_usage(records, query.count, npu_cores, expected_tasks);
+
+cleanup:
+    /* 后续场景的正式性能窗口必须运行在 Schedule Trace 关闭状态。 */
+    if (fd >= 0 && configure_schedule_trace(fd, 0U) < 0) {
+        fprintf(stderr, "Schedule Trace disable failed: errno=%d (%s)\n",
+                errno, strerror(errno));
+        result = -1;
+    }
+    if (gate_initialized) {
+        stream_gate_destroy(&gate);
+    }
+    free(records);
+    free(threads);
+    free(usage_workers);
+    return result;
+}
+
+/* 将错误枚举转换为单线程结果中的短名称。 */
 static const char *worker_error_name(worker_error_t error) {
     switch (error) {
         case WORKER_OK:
@@ -578,6 +977,7 @@ static const char *worker_error_name(worker_error_t error) {
     return "unknown";
 }
 
+/* 输出单线程完成数、正式轮均值和首个错误现场。 */
 static void print_worker_result(const worker_context_t *worker, uint32_t total_rounds) {
     uint64_t total_latency_us = 0;
     double mean_us = 0.0;
@@ -608,20 +1008,23 @@ static void print_worker_result(const worker_context_t *worker, uint32_t total_r
         );
     } else if (worker->error == WORKER_TASK_COUNTER_FAILED) {
         printf(
-            "  first failure: round=%u task_counter=%u expected=1\n",
+            "  first failure: round=%u task_counter=%u expected=%u\n",
             worker->error_round + 1U,
-            worker->error_task_counter
+            worker->error_task_counter,
+            worker->scenario->task_count
         );
     } else if (worker->error == WORKER_IRQ_STATUS_FAILED) {
         printf(
-            "  first failure: round=%u int_status=0x%x expected=0x300\n",
+            "  first failure: round=%u task=%u int_status=0x%x expected=0x300\n",
             worker->error_round + 1U,
+            worker->error_task_index,
             worker->error_irq_status
         );
     } else if (worker->error == WORKER_OUTPUT_FAILED) {
         printf(
-            "  first failure: round=%u row=%u col=%u expected=%f actual=%f\n",
+            "  first failure: round=%u task=%u row=%u col=%u expected=%f actual=%f\n",
             worker->error_round + 1U,
+            worker->error_task_index,
             worker->error_row,
             worker->error_col,
             worker->error_expected,
@@ -630,6 +1033,7 @@ static void print_worker_result(const worker_context_t *worker, uint32_t total_r
     }
 }
 
+/* 严格解析十进制 u32，拒绝空串、尾随字符和范围溢出。 */
 static int parse_u32(const char *text, uint32_t *value) {
     char *end = NULL;
     unsigned long parsed;
@@ -643,22 +1047,43 @@ static int parse_u32(const char *text, uint32_t *value) {
     return 0;
 }
 
+/* 打印线程、轮数和核心数量参数。 */
 static void print_usage(const char *program) {
+    size_t scenario_count;
+    const rknpu_scenario_case_t *scenarios = rknpu_scenario_cases(&scenario_count);
+
     printf("Usage: %s [options]\n", program);
     printf("Options:\n");
+    printf("  --scenario <name|all>  scenario case, default: all\n");
     printf("  --threads <count>  submit threads, default: %u\n", DEFAULT_THREADS);
     printf("  --rounds <count>   measured rounds, default: %u\n", DEFAULT_ROUNDS);
     printf("  --warmup <count>   warmup rounds, default: %u\n", DEFAULT_WARMUP_ROUNDS);
     printf("  --cores <1|2|3>    NPU core count, default: %u\n", DEFAULT_NPU_CORES);
+    printf("  --submit-limit <count>  maximum live blocking Submit, default: threads\n");
     printf("  --help             show this message\n");
+    printf("Scenarios:\n");
+    for (size_t index = 0; index < scenario_count; index++) {
+        printf("  %-28s M=%u K=%u N=%u tasks=%u\n",
+               scenarios[index].name,
+               scenarios[index].m,
+               scenarios[index].k,
+               scenarios[index].n,
+               scenarios[index].task_count);
+    }
 }
 
+/*
+ * 解析参数并把核心数量转换为连续 core_mask：1->0x1、2->0x3、3->0x7。
+ * 同时检查线程范围以及 warmup+rounds 的 u32 加法溢出。
+ */
 static int parse_options(int argc, char **argv, test_options_t *options) {
     options->threads = DEFAULT_THREADS;
     options->rounds = DEFAULT_ROUNDS;
     options->warmup_rounds = DEFAULT_WARMUP_ROUNDS;
     options->npu_cores = DEFAULT_NPU_CORES;
+    options->submit_limit = 0U;
     options->core_mask = (1U << DEFAULT_NPU_CORES) - 1U;
+    options->scenario_filter = "all";
 
     for (int index = 1; index < argc; index++) {
         const char *arg = argv[index];
@@ -667,10 +1092,12 @@ static int parse_options(int argc, char **argv, test_options_t *options) {
             print_usage(argv[0]);
             return 1;
         }
-        if (strcmp(arg, "--threads") != 0 &&
+        if (strcmp(arg, "--scenario") != 0 &&
+            strcmp(arg, "--threads") != 0 &&
             strcmp(arg, "--rounds") != 0 &&
             strcmp(arg, "--warmup") != 0 &&
-            strcmp(arg, "--cores") != 0) {
+            strcmp(arg, "--cores") != 0 &&
+            strcmp(arg, "--submit-limit") != 0) {
             fprintf(stderr, "unknown option: %s\n", arg);
             print_usage(argv[0]);
             return -1;
@@ -680,7 +1107,14 @@ static int parse_options(int argc, char **argv, test_options_t *options) {
             return -1;
         }
 
-        if (strcmp(arg, "--threads") == 0) {
+        if (strcmp(arg, "--scenario") == 0) {
+            if (strcmp(argv[index], "all") != 0 &&
+                rknpu_scenario_find(argv[index]) == NULL) {
+                fprintf(stderr, "invalid --scenario value: %s\n", argv[index]);
+                return -1;
+            }
+            options->scenario_filter = argv[index];
+        } else if (strcmp(arg, "--threads") == 0) {
             if (parse_u32(argv[index], &options->threads) != 0 ||
                 options->threads == 0U || options->threads > MAX_TEST_THREADS) {
                 fprintf(stderr, "invalid --threads value: %s (valid: 1-%u)\n",
@@ -697,6 +1131,12 @@ static int parse_options(int argc, char **argv, test_options_t *options) {
                 fprintf(stderr, "invalid --warmup value: %s\n", argv[index]);
                 return -1;
             }
+        } else if (strcmp(arg, "--submit-limit") == 0) {
+            if (parse_u32(argv[index], &options->submit_limit) != 0 ||
+                options->submit_limit == 0U) {
+                fprintf(stderr, "invalid --submit-limit value: %s\n", argv[index]);
+                return -1;
+            }
         } else if (parse_u32(argv[index], &options->npu_cores) != 0 ||
                    options->npu_cores == 0U ||
                    options->npu_cores > MAX_NPU_CORES) {
@@ -709,6 +1149,15 @@ static int parse_options(int argc, char **argv, test_options_t *options) {
     /* 核心数量映射为从 core0 开始的连续物理核心掩码。 */
     options->core_mask = (1U << options->npu_cores) - 1U;
 
+    /* 未指定时保持原测试行为；显式限制不能超过 producer 线程数。 */
+    if (options->submit_limit == 0U) {
+        options->submit_limit = options->threads;
+    } else if (options->submit_limit > options->threads) {
+        fprintf(stderr, "submit limit %u exceeds thread count %u\n",
+                options->submit_limit, options->threads);
+        return -1;
+    }
+
     if (UINT32_MAX - options->warmup_rounds < options->rounds) {
         fprintf(stderr, "warmup and measured round count overflow\n");
         return -1;
@@ -716,143 +1165,175 @@ static int parse_options(int argc, char **argv, test_options_t *options) {
     return 0;
 }
 
-int main(int argc, char **argv) {
-    /* ------------------------ 变量声明与初始化 ------------------------ */
-    test_options_t options;              // 存储解析后的命令行参数
-    worker_context_t *workers = NULL;    // 工作线程上下文数组指针，存储每个线程的私有数据
-    pthread_t *threads = NULL;           // POSIX 线程 ID 数组指针
-    round_gate_t gate;                   // 同步屏障结构体，用于协调所有线程同时开始和结束
-    uint32_t prepared_workers = 0;       // 计数器：记录成功完成资源准备的线程数
-    uint32_t created_threads = 0;        // 计数器：记录成功创建的线程数
-    uint32_t total_rounds;               // 总轮数 = 预热轮数 + 测量轮数
-    uint64_t measured_submit_us = 0;     // measured 轮次中实际 submit 活跃窗口的累计时间
-    uint64_t *all_samples = NULL;        // 指针：用于汇总所有线程的延迟数据
-    size_t all_sample_count = 0;         // 汇总的样本总数
-    size_t sample_offset = 0;            // 数据拷贝时的偏移量
-    size_t measured_submit_count = 0;    // 吞吐量窗口内成功完成的 measured submit 数量
-    int fd = -1;                         // NPU 设备文件描述符，初始化为 -1
-    int gate_initialized = 0;            // 标志位：同步屏障是否初始化成功
-    int result = 1;                      // 程序退出码，默认为 1 (失败)，只有全部通过才置 0
-    int join_failed = 0;                 // 标志位：线程 join 是否失败
-    int parse_result;
+/* all 选择七个组合，指定完整名称时只执行一个组合。 */
+static int scenario_selected(const test_options_t *options, const char *name) {
+    return strcmp(options->scenario_filter, "all") == 0 ||
+        strcmp(options->scenario_filter, name) == 0;
+}
 
-    /* ------------------------ 1. 参数解析 ------------------------ */
-    parse_result = parse_options(argc, argv, &options);
-    if (parse_result != 0) {
-        // parse_result > 0 表示是 --help 正常退出，< 0 表示参数错误
-        return parse_result > 0 ? 0 : 2;
+/*
+ * 程序级流程：解析 core_mask/submit_limit -> 打开共享 fd 并复位 -> 清空 trace
+ * -> 准备每线程 DMA -> 各线程经 SubmitGate 预热 -> 单次同步后连续 Submit
+ * -> join -> 读取 trace -> 汇总指标 -> 释放 DMA 和 fd。最后修改日期：2026-08-18。
+ * trace 记录数量和顺序也是 PASS 条件，不接受缺失或溢出的四阶段样本。
+ */
+static int run_scenario(
+    const test_options_t *options,
+    const rknpu_scenario_case_t *scenario
+) {
+    worker_context_t *workers = NULL;
+    pthread_t *threads = NULL;
+    stream_gate_t gate;
+    submit_gate_t submit_gate;
+    uint32_t prepared_workers = 0;
+    uint32_t created_threads = 0;
+    uint32_t total_rounds;
+    uint64_t first_measured_start_us = 0;
+    uint64_t last_measured_end_us = 0;
+    uint64_t measured_window_us = 0;
+    uint64_t setup_operands_us = 0;
+    uint64_t build_regcmds_us = 0;
+    size_t total_dma_bytes = 0;
+    uint64_t *all_samples = NULL;
+    /* 驱动一次性返回的四阶段原始记录。 */
+    struct rknpu_submit_trace_record *trace_records = NULL;
+    struct rknpu_submit_trace_query trace_query;
+    size_t all_sample_count = 0;
+    size_t sample_offset = 0;
+    size_t measured_submit_count = 0;
+    size_t expected_measured_count;
+    size_t expected_trace_count;
+    size_t warmup_trace_count;
+    int fd = -1;
+    int gate_initialized = 0;
+    int submit_gate_initialized = 0;
+    int result = 1;
+    int join_failed = 0;
+    int trace_ok = 0;
+    int metrics_ok = 0;
+    int core_usage_ok = 0;
+    total_rounds = options->warmup_rounds + options->rounds;
+    expected_measured_count = (size_t)options->threads * options->rounds;
+    if (total_rounds > RKNPU_SUBMIT_TRACE_CAPACITY / options->threads) {
+        fprintf(stderr,
+                "trace capacity exceeded: threads=%u total_rounds=%u capacity=%u\n",
+                options->threads, total_rounds, RKNPU_SUBMIT_TRACE_CAPACITY);
+        return 2;
     }
-    total_rounds = options.warmup_rounds + options.rounds;
+    expected_trace_count = (size_t)options->threads * total_rounds;
+    warmup_trace_count = (size_t)options->threads * options->warmup_rounds;
 
-    /* ------------------------ 2. 设备初始化 ------------------------ */
-    // 打开 NPU 设备节点 (如 /dev/npu)
+    /* 2. 整次实验共享一次 npu_open，并且只执行一次硬件 reset。 */
     fd = npu_open();
     if (fd < 0) {
         return 1;
     }
-    // 复位 NPU 硬件状态，确保测试环境干净
     if (npu_reset(fd) < 0) {
         fprintf(stderr, "RKNPU reset failed: errno=%d (%s)\n", errno, strerror(errno));
-        goto cleanup; // 失败则跳转到清理流程
+        goto cleanup;
+    }
+    /* 新实验开始前清空驱动记录；旧驱动不支持该 ioctl 时直接停止测试。 */
+    if (reset_submit_trace(fd) < 0 || configure_schedule_trace(fd, 0U) < 0) {
+        fprintf(stderr, "RKNPU trace reset failed: errno=%d (%s)\n",
+                errno, strerror(errno));
+        goto cleanup;
     }
 
-    /* ------------------------ 3. 内存分配 ------------------------ */
-    // 分配工作线程上下文数组
-    workers = calloc(options.threads, sizeof(*workers));
-    // 分配线程 ID 数组
-    threads = calloc(options.threads, sizeof(*threads));
+    /* 3. 按预期 Submit 总数预分配用户态上下文；trace 容量已在打开设备前检查。 */
+    workers = calloc(options->threads, sizeof(*workers));
+    threads = calloc(options->threads, sizeof(*threads));
     if (workers == NULL || threads == NULL) {
         fprintf(stderr, "thread context allocation failed\n");
         goto cleanup;
     }
 
-    /* ------------------------ 4. 为每个线程准备资源 ------------------------ */
-    // 关键点：这里分配的是 NPU 专用的 DMA 缓冲区，而非普通堆内存
-    for (uint32_t index = 0; index < options.threads; index++) {
+    /* 4. 每个线程独占五块 DMA，但所有 GEM 都通过同一个 fd 创建。 */
+    for (uint32_t index = 0; index < options->threads; index++) {
         workers[index].thread_id = index;
-        workers[index].fd = fd; // 所有线程共享同一个设备 FD
-        workers[index].core_mask = options.core_mask;
-        workers[index].warmup_rounds = options.warmup_rounds;
-        workers[index].measure_rounds = options.rounds;
+        workers[index].fd = fd;
+        workers[index].scenario = scenario;
+        workers[index].core_mask = options->core_mask;
+        workers[index].warmup_rounds = options->warmup_rounds;
+        workers[index].measure_rounds = options->rounds;
 
-        // 为每个线程分配用于存储延迟数据的数组
         workers[index].latency_samples_us = calloc(
-            options.rounds,
+            options->rounds,
             sizeof(*workers[index].latency_samples_us)
         );
-        
-        // 准备 NPU 任务资源：
-        // 1. 分配输入、权重、输出、指令 DMA 缓冲区
-        // 2. 填充测试数据
-        // 3. 构建 NPU 任务指令
+        if (workers[index].latency_samples_us != NULL) {
+            /* 启动线程前写入全部样本页，避免正式首轮触发延迟数组缺页。 */
+            for (uint32_t round = 0; round < options->rounds; round++) {
+                workers[index].latency_samples_us[round] = UINT64_MAX;
+            }
+        }
+        /* 分配 DMA、填充矩阵并生成该线程的 Task 和寄存器命令。 */
         if (workers[index].latency_samples_us == NULL ||
-            prepare_worker_resources(&workers[index]) != 0) {
+            prepare_worker_resources(&workers[index], options->npu_cores) != 0) {
             fprintf(stderr, "worker[%u] resource preparation failed\n", index);
             goto cleanup;
         }
-        prepared_workers++; // 成功准备的线程数加 1，用于后续精准清理
+        {
+            rknpu_scenario_metrics_t metrics;
+            rknpu_scenario_workload_get_metrics(workers[index].workload, &metrics);
+            total_dma_bytes += metrics.total_dma_bytes;
+            setup_operands_us += metrics.setup_operands_us;
+            build_regcmds_us += metrics.build_regcmds_us;
+        }
+        prepared_workers++;
     }
 
-    /* ------------------------ 5. 初始化同步屏障 ------------------------ */
-    // 初始化多线程同步机制，确保所有线程在同一时刻提交任务，产生最大并发压力
-    if (round_gate_init(&gate, options.threads) != 0) {
-        fprintf(stderr, "round synchronization initialization failed\n");
+    /* 5. 初始化一次性启动门和只包围 blocking ioctl 的 Submit admission 门。 */
+    if (stream_gate_init(&gate, options->threads) != 0) {
+        fprintf(stderr, "stream synchronization initialization failed\n");
         goto cleanup;
     }
     gate_initialized = 1;
+    if (submit_gate_init(&submit_gate, options->submit_limit) != 0) {
+        fprintf(stderr, "submit admission initialization failed\n");
+        goto cleanup;
+    }
+    submit_gate_initialized = 1;
 
-    /* ------------------------ 6. 打印测试配置 ------------------------ */
+    /* 6. 输出线程、负载、核心掩码和轮数，作为结果的实验条件。 */
     printf("rknpu_multithread_submit_core\n");
+    printf("  scenario        : %s\n", scenario->name);
+    printf("  operand mode    : %s\n", rknpu_operand_mode_name(scenario->operand_mode));
     printf("  shared fd       : yes\n");
-    printf("  threads         : %u\n", options.threads);
-    printf("  workload        : M=%u K=%u N=%u, one task per submit\n",
-           TEST_M, TEST_K, TEST_N);
-    printf("  NPU cores       : %u\n", options.npu_cores);
-    printf("  core mask       : 0x%x\n", options.core_mask);
+    printf("  threads         : %u\n", options->threads);
+    printf("  submit limit    : %u live blocking ioctl\n", options->submit_limit);
+    printf("  workload        : M=%u K=%u N=%u, %u tasks per submit\n",
+           scenario->m, scenario->k, scenario->n, scenario->task_count);
+    printf("  lanes           : %u, tasks distributed evenly\n", options->npu_cores);
+    printf("  NPU cores       : %u\n", options->npu_cores);
+    printf("  core mask       : 0x%x\n", options->core_mask);
     printf("  rounds          : %u warmup + %u measured\n",
-           options.warmup_rounds, options.rounds);
+           options->warmup_rounds, options->rounds);
+    printf("  submit mode     : continuous blocking stream\n");
+    printf("  validation      : warmup + last measured Submit per thread\n");
 
-    /* ------------------------ 7. 创建工作线程 ------------------------ */
-    for (uint32_t index = 0; index < options.threads; index++) {
-        workers[index].gate = &gate; // 将同步屏障指针传递给线程
+    /* 7. 全部 DMA 就绪后创建线程，资源准备时间不计入性能。 */
+    for (uint32_t index = 0; index < options->threads; index++) {
+        workers[index].gate = &gate;
+        workers[index].submit_gate = &submit_gate;
         int thread_error = pthread_create(&threads[index], NULL, worker_main, &workers[index]);
         if (thread_error != 0) {
             fprintf(stderr, "pthread_create failed for worker[%u]: %s\n",
                     index, strerror(thread_error));
-            round_gate_stop(&gate); // 创建失败时，必须通知同步屏障停止，防止已创建线程死锁
+            /* 唤醒已经完成预热并等待正式起点的线程。 */
+            stream_gate_stop(&gate);
             goto join_threads;
         }
         created_threads++;
     }
 
-    /* ------------------------ 8. 执行基准测试主循环 ------------------------ */
-    // 主线程充当“指挥官”，控制每一轮测试的开始和结束
-    for (uint32_t round = 0; round < total_rounds; round++) {
-        uint64_t round_submit_us = 0;
-        uint32_t round_submit_count = 0;
-
-        // 运行一轮同步测试：
-        // 1. 等待所有工作线程就绪
-        // 2. 广播唤醒所有线程并等待本轮结束
-        // 3. 汇总最早 ioctl 进入到最晚 ioctl 返回的 submit 活跃窗口
-        if (run_synchronized_round(
-                &gate,
-                &round_submit_us,
-                &round_submit_count
-            ) != 0) {
-            fprintf(stderr, "round synchronization stopped at round=%u\n", round + 1U);
-            goto join_threads;
-        }
-        // 只有预热轮之后的轮次才计入统计数据
-        if (round >= options.warmup_rounds) {
-            measured_submit_us += round_submit_us;
-            measured_submit_count += round_submit_count;
-        }
+    /* 8. 等待各线程独立完成预热，只广播一次正式连续流水的起点。 */
+    if (stream_gate_start(&gate) != 0) {
+        fprintf(stderr, "continuous submit stream failed to start\n");
+        goto join_threads;
     }
 
-/* ------------------------ 9. 线程汇合 ------------------------ */
+/* 9. 正常完成和创建失败都在此 join 已创建线程。 */
 join_threads:
-    // 等待所有工作线程退出
     for (uint32_t index = 0; index < created_threads; index++) {
         int thread_error = pthread_join(threads[index], NULL);
         if (thread_error != 0) {
@@ -861,36 +1342,87 @@ join_threads:
             join_failed = 1;
         }
     }
-    
-    // 如果 join 失败，说明线程资源未完全回收，直接返回避免非法内存访问
+
+    /* join 失败时不能证明 worker 已停止，因此不能安全释放其上下文。 */
     if (join_failed) {
         return 1;
     }
-    // 如果创建的线程数少于预期，说明中途出错，跳转到清理流程
-    if (created_threads != options.threads) {
+    if (created_threads != options->threads) {
         goto cleanup;
     }
+    printf("  submit gate peak: %u/%u\n",
+           submit_gate.peak_active, submit_gate.capacity);
 
-    /* ------------------------ 10. 收集与打印结果 ------------------------ */
-    // 收集各线程的统计数据
-    for (uint32_t index = 0; index < options.threads; index++) {
+    /*
+     * join 后按线程局部时间取全局最早进入和最晚返回，热路径无需共享锁。
+     * 这个连续区间保留线程间调度空档，可用于证明持续满载能力。
+     */
+    for (uint32_t index = 0; index < options->threads; index++) {
+        if (workers[index].successful_measured_submits == 0U) {
+            continue;
+        }
+        if (measured_submit_count == 0U ||
+            workers[index].first_measured_start_us < first_measured_start_us) {
+            first_measured_start_us = workers[index].first_measured_start_us;
+        }
+        if (measured_submit_count == 0U ||
+            workers[index].last_measured_end_us > last_measured_end_us) {
+            last_measured_end_us = workers[index].last_measured_end_us;
+        }
+        measured_submit_count += workers[index].successful_measured_submits;
+    }
+    if (measured_submit_count > 0U && last_measured_end_us >= first_measured_start_us) {
+        measured_window_us = last_measured_end_us - first_measured_start_us;
+    }
+
+    /* 10. worker 全部停止后读取稳定 trace，禁止边运行边打印驱动阶段日志。 */
+    trace_records = calloc(expected_trace_count, sizeof(*trace_records));
+    if (trace_records == NULL) {
+        fprintf(stderr, "submit trace allocation failed\n");
+        goto cleanup;
+    }
+    /* Submit 已全部结束，预建接收页不会影响上面的性能时间。 */
+    touch_trace_output_pages(
+        trace_records,
+        expected_trace_count * sizeof(*trace_records)
+    );
+    if (read_submit_trace(fd, trace_records, (uint32_t)expected_trace_count,
+                          &trace_query) < 0) {
+        fprintf(stderr, "RKNPU submit trace read failed: errno=%d (%s)\n",
+                errno, strerror(errno));
+        goto cleanup;
+    }
+    printf("trace records: %u/%zu overflow=%u\n",
+           trace_query.count, expected_trace_count, trace_query.overflowed);
+    if (trace_query.count == expected_trace_count && trace_query.overflowed == 0U) {
+        printf("four-stage latency (measured submits: %zu)\n",
+               expected_trace_count - warmup_trace_count);
+        trace_ok = report_submit_trace(trace_records, trace_query.count,
+                                       warmup_trace_count) == 0;
+    } else {
+        fprintf(stderr, "submit trace is incomplete\n");
+    }
+
+    /* 汇总每个线程的正式轮 blocking ioctl 延迟样本。 */
+    for (uint32_t index = 0; index < options->threads; index++) {
         print_worker_result(&workers[index], total_rounds);
         all_sample_count += workers[index].latency_sample_count;
     }
 
-    // 如果有样本数据，进行整体统计计算
-    if (all_sample_count > 0U) {
-        benchmark_latency_stats_t stats;
-
-        // 分配全局数组以存放所有样本
+    if (all_sample_count != expected_measured_count ||
+        measured_submit_count != expected_measured_count) {
+        fprintf(stderr,
+                "incomplete measured submits: samples=%zu completed=%zu expected=%zu\n",
+                all_sample_count, measured_submit_count, expected_measured_count);
+    } else {
         all_samples = malloc(all_sample_count * sizeof(*all_samples));
         if (all_samples == NULL) {
             fprintf(stderr, "latency sample allocation failed\n");
             goto cleanup;
         }
-        
-        // 将各线程的样本数据拷贝到连续的全局数组中
-        for (uint32_t index = 0; index < options.threads; index++) {
+
+        /* 统计接口接收连续数组，因此按线程顺序合并样本。 */
+        for (uint32_t index = 0; index < options->threads; index++) {
             memcpy(
                 &all_samples[sample_offset],
                 workers[index].latency_samples_us,
@@ -899,64 +1431,104 @@ join_threads:
             sample_offset += workers[index].latency_sample_count;
         }
 
-        // 计算统计数据 (均值、分位数等)
-        if (benchmark_compute_latency_stats(all_samples, all_sample_count, &stats) != 0) {
-            fprintf(stderr, "latency statistics failed\n");
-            goto cleanup;
+        {
+            rknpu_performance_report_t report = {
+                .scenario = scenario,
+                .npu_cores = options->npu_cores,
+                .threads = options->threads,
+                .measured_rounds = options->rounds,
+                .submit_samples_us = all_samples,
+                .submit_sample_count = all_sample_count,
+                .successful_submit_count = measured_submit_count,
+                .measured_window_us = measured_window_us,
+                .total_dma_bytes = total_dma_bytes,
+                .setup_operands_us = setup_operands_us,
+                .build_regcmds_us = build_regcmds_us,
+            };
+
+            /* 性能报告复用 core_scaling 的统计接口和任务吞吐量公式。 */
+            if (rknpu_print_performance_report(&report) != 0) {
+                fprintf(stderr, "performance statistics failed\n");
+                goto cleanup;
+            }
+            metrics_ok = 1;
         }
-
-        printf("aggregate measured submits: %zu\n", all_sample_count);
-        printf("  mean : %.3f ms\n", stats.mean_us / 1000.0);
-        printf("  P50  : %.3f ms\n", (double)stats.p50_us / 1000.0);
-        printf("  P95  : %.3f ms\n", (double)stats.p95_us / 1000.0);
-        printf("  P99  : %.3f ms\n", (double)stats.p99_us / 1000.0);
     }
 
-    // 使用成功 submit 数量除以并发 ioctl 的实际活跃时间。
-    if (measured_submit_us > 0U) {
-        double throughput = (double)measured_submit_count * 1000000.0 /
-            (double)measured_submit_us;
-        printf("  throughput: %.2f submits/s\n", throughput);
-    }
+    /*
+     * 正式性能与四阶段样本结束后另开短连续窗口。Schedule Trace 的额外记录锁
+     * 不进入上面的性能数字，窗口只用于证明物理核心实际派发和忙碌时间。
+     */
+    core_usage_ok = run_core_usage_window(
+        fd, workers, options->threads, options->npu_cores, scenario->task_count,
+        &submit_gate
+    ) == 0;
 
-    /* ------------------------ 11. 结果判定 ------------------------ */
-    result = 0;
-    // 检查每个线程是否全部成功：无错误、提交数正确、采样数正确
-    for (uint32_t index = 0; index < options.threads; index++) {
+    /* 11. 两类 trace、性能样本及所有 worker 均完整时才 PASS。 */
+    result = trace_ok && metrics_ok && core_usage_ok ? 0 : 1;
+    for (uint32_t index = 0; index < options->threads; index++) {
         if (workers[index].error != WORKER_OK ||
             workers[index].successful_submits != total_rounds ||
-            workers[index].latency_sample_count != options.rounds) {
+            workers[index].latency_sample_count != options->rounds) {
             result = 1;
         }
     }
     printf("rknpu_multithread_submit_core: %s\n", result == 0 ? "PASS" : "FAIL");
 
-    /* ------------------------ 12. 资源清理 ------------------------ */
+    /* 12. join 后销毁启动门和 DMA，最后关闭共享 fd。 */
 cleanup:
-    // 销毁同步屏障
-    if (gate_initialized) {
-        round_gate_destroy(&gate);
+    if (submit_gate_initialized) {
+        submit_gate_destroy(&submit_gate);
     }
-    
+    if (gate_initialized) {
+        stream_gate_destroy(&gate);
+    }
+
     free(all_samples);
-    
-    // 释放每个工作线程申请的 DMA 缓冲区和内存
+    free(trace_records);
+
     for (uint32_t index = 0; index < prepared_workers; index++) {
         release_worker_resources(&workers[index]);
         free(workers[index].latency_samples_us);
     }
-    
-    // 处理资源准备阶段中断的情况：第 prepared_workers 个线程可能已分配了 latency 数组但未计入 prepared_workers
-    if (workers != NULL && prepared_workers < options.threads) {
+
+    /* 失败 worker 可能只创建了延迟数组，尚未计入 prepared_workers。 */
+    if (workers != NULL && prepared_workers < options->threads) {
         free(workers[prepared_workers].latency_samples_us);
     }
 
     free(threads);
     free(workers);
-    
-    // 关闭 NPU 设备
+
     if (fd >= 0) {
         npu_close(fd);
     }
+    return result;
+}
+
+/* 依次运行所选场景；每个场景单独清空和读取四阶段 trace。 */
+int main(int argc, char **argv) {
+    test_options_t options;
+    const rknpu_scenario_case_t *scenarios;
+    size_t scenario_count;
+    int parse_result;
+    int result = 0;
+
+    parse_result = parse_options(argc, argv, &options);
+    if (parse_result != 0) {
+        return parse_result > 0 ? 0 : 2;
+    }
+
+    scenarios = rknpu_scenario_cases(&scenario_count);
+    for (size_t index = 0; index < scenario_count; index++) {
+        if (!scenario_selected(&options, scenarios[index].name)) {
+            continue;
+        }
+        if (run_scenario(&options, &scenarios[index]) != 0) {
+            result = 1;
+        }
+    }
+    printf("rknpu_multithread_submit_core all selected scenarios: %s\n",
+           result == 0 ? "PASS" : "FAIL");
     return result;
 }

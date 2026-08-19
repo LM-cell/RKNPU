@@ -1,4 +1,5 @@
-use crate::RknpuIrqHandler;
+// NPU IRQ 状态发布与 worker 唤醒，最后修改日期：2026-08-17。
+use crate::{RknpuIrqHandler, card1::notify_rknpu_worker};
 use core::cell::UnsafeCell;
 
 /// Mutable storage slot used to hold one installed IRQ handler.
@@ -21,29 +22,34 @@ pub const NPU_IRQ_FNS: [fn(usize); 3] = [
     handle_npu_irq_core2,
 ];
 
-/// IRQ entry point for NPU core 0.
+/// 处理一个 NPU 核心的 completion IRQ，并在存在有效状态时唤醒调度 worker。
+///
+/// IRQ 中只调用底层 `handle()` 读取、清除并发布状态，再发送 Event 通知；
+/// Task 回收、Ready 队列操作和后续派发全部由被唤醒的 worker 完成。
+fn handle_npu_irq(core_slot: usize) {
+    let status = unsafe {
+        // 安全性：probe 在注册 IRQ 前写入对应槽位，注册后不再修改该槽位。
+        // IRQ 处理器只通过共享引用调用内部原子状态发布逻辑。
+        (&*NPU_IRQ_HANDLERS[core_slot].0.get())
+            .as_ref()
+            .map_or(0, RknpuIrqHandler::handle)
+    };
+    if status != 0 {
+        notify_rknpu_worker();
+    }
+}
+
+/// NPU core0 的静态 IRQ 入口。
 fn handle_npu_irq_core0(_irq: usize) {
-    unsafe {
-        if let Some(h) = &*NPU_IRQ_HANDLERS[0].0.get() {
-            h.handle();
-        }
-    }
+    handle_npu_irq(0);
 }
 
-/// IRQ entry point for NPU core 1.
+/// NPU core1 的静态 IRQ 入口。
 fn handle_npu_irq_core1(_irq: usize) {
-    unsafe {
-        if let Some(h) = &*NPU_IRQ_HANDLERS[1].0.get() {
-            h.handle();
-        }
-    }
+    handle_npu_irq(1);
 }
 
-/// IRQ entry point for NPU core 2.
+/// NPU core2 的静态 IRQ 入口。
 fn handle_npu_irq_core2(_irq: usize) {
-    unsafe {
-        if let Some(h) = &*NPU_IRQ_HANDLERS[2].0.get() {
-            h.handle();
-        }
-    }
+    handle_npu_irq(2);
 }

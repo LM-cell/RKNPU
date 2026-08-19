@@ -36,6 +36,27 @@ pub const RKNPU_JOB_FENCE_IN: u32 = 1 << 3;
 /// Signal an external fence when execution completes.
 pub const RKNPU_JOB_FENCE_OUT: u32 = 1 << 4;
 
+/// 启用 Submit 内部的动态 Task 领取，最后修改日期：2026-08-18。
+///
+/// 该位只由调度器读取，不得传入硬件 JobMode。动态模式下，空闲物理核心
+/// 可以从同一个 Submit 领取任意尚未派发的独立 Task。
+pub const RKNPU_JOB_DYNAMIC_TASKS: u32 = 1 << 5;
+
+/// 允许传入底层寄存器执行路径的原有硬件标志。
+pub const RKNPU_JOB_HARDWARE_MASK: u32 = RKNPU_JOB_PC
+    | RKNPU_JOB_NONBLOCK
+    | RKNPU_JOB_PINGPONG
+    | RKNPU_JOB_FENCE_IN
+    | RKNPU_JOB_FENCE_OUT;
+
+/// Submit ioctl 在动态模式下接受的全部标志。
+pub const RKNPU_SUBMIT_ALLOWED_FLAGS: u32 =
+    RKNPU_JOB_HARDWARE_MASK | RKNPU_JOB_DYNAMIC_TASKS;
+
+/// RK3588 三个物理 NPU 核心对应的有效位。
+pub const RKNPU_VALID_CORE_MASK: u32 =
+    RKNPU_CORE0_MASK | RKNPU_CORE1_MASK | RKNPU_CORE2_MASK;
+
 /// Hardware task descriptor consumed by the PC block.
 ///
 /// The PC engine DMA-reads an array of these descriptors from

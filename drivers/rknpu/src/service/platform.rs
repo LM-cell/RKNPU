@@ -1,5 +1,4 @@
-// Submit-latency instrumentation last modified: 2026-08-03.
-use alloc::vec::Vec;
+// Submit延迟平台接口，最后修改日期：2026-08-04。
 
 use crate::{Rknpu, RknpuError};
 
@@ -62,7 +61,10 @@ pub trait RknpuWorkerSignal: Send + Sync + 'static {
     /// Register a listener for the next worker wake-up.
     fn listen(&self) -> Self::Listener;
 
-    /// Wake one sleeping worker.
+    /// 唤醒一个阻塞中的调度 worker。
+    ///
+    /// 最后修改日期：2026-08-17。该方法会从 NPU IRQ 上下文调用，平台实现
+    /// 不得睡眠、分配内存或获取调度器业务锁。
     fn notify_one(&self);
 }
 
@@ -87,7 +89,10 @@ pub trait RknpuSchedulerRuntime: Send + Sync + 'static {
     where
         F: FnOnce() + Send + 'static;
 
-    /// Yield execution while hardware is inflight or scheduling is stalled.
+    /// 调度器仍有 live work、但当前没有 inflight Task 且无法派发时让出 CPU。
+    ///
+    /// 最后修改日期：2026-08-17。该接口只用于 stalled 重试，正常 NPU 执行
+    /// 完成等待必须使用 WorkerSignal，不再通过持续 yield 轮询 completion。
     fn yield_now(&self);
 }
 

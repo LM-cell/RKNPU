@@ -1,4 +1,4 @@
-
+// RKNPU ioctl 调度追踪与仿真测试，最后修改日期：2026-08-07。
 use crate::{Rknpu, RknpuError, RknpuTask};
 use core::mem::size_of;
 
@@ -131,6 +131,224 @@ pub struct RknpuMemSync {
     pub size: u64,
 }
 
+/// Submit 四阶段延迟原始记录，最后修改日期：2026-08-07。
+///
+/// 每个成功返回的 blocking Submit 产生一条记录。用户态只对满足
+/// `t0<=t1<=t2<=t3<=t4` 的完整记录计算阶段差值。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuSubmitTraceRecord {
+    /// 驱动内部 Submit 唯一编号，用于关联调度事件。
+    pub queue_task: u64,
+    /// Submit ioctl 进入驱动、尚未 copy-in 的时间。
+    pub t0_ns: u64,
+    /// Submit 已经进入调度队列的时间。
+    pub t1_ns: u64,
+    /// 第一个 Task 在持有设备锁后开始底层下发的时间。
+    pub t2_ns: u64,
+    /// 最后一个 Task 的完成状态被调度器收割的时间。
+    pub t3_ns: u64,
+    /// Task 数组和 Submit 头完成用户态 copy-out 的时间。
+    pub t4_ns: u64,
+}
+
+/// 测试程序通过该结构复位或读取 Submit 延迟记录。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuSubmitTraceQuery {
+    /// RESET 或 READ 操作码。
+    pub operation: u32,
+    /// 用户态记录数组容量，单位为元素数量。
+    pub capacity: u32,
+    /// 驱动实际复制的记录数量。
+    pub count: u32,
+    /// 内核缓冲区满或用户数组不足时为 1。
+    pub overflowed: u32,
+    /// 用户态 `RknpuSubmitTraceRecord[]` 地址。
+    pub records_address: u64,
+}
+
+pub const RKNPU_SUBMIT_TRACE_RESET: u32 = 0;
+pub const RKNPU_SUBMIT_TRACE_READ: u32 = 1;
+pub const RKNPU_SUBMIT_TRACE_CAPACITY: usize = 1024;
+
+/// One scheduler-worker `yield_now()` interval captured entirely in memory.
+///
+/// `yield_start_ns` is sampled immediately before the worker calls the
+/// platform yield hook and `yield_end_ns` immediately after that call returns.
+/// Userspace computes `yield_gap_ns = end - start`; keeping both timestamps
+/// also lets the experiment join the interval to the existing per-submit
+/// `t0..t4` trace through `queue_task`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuWorkerYieldTraceRecord {
+    /// Monotonic sequence assigned when the record is appended.
+    pub sequence: u64,
+    /// Submit owning every inflight core at the yield boundary.
+    ///
+    /// Zero means that no single owner could be identified. The single-submit
+    /// `core_scaling_benchmark_fix` experiment always has one owner.
+    pub queue_task: u64,
+    /// Monotonic timestamp immediately before `yield_now()`.
+    pub yield_start_ns: u64,
+    /// Monotonic timestamp immediately after `yield_now()` returns.
+    pub yield_end_ns: u64,
+    /// Why the Worker yielded: inflight hardware or a stalled ready queue.
+    pub reason: u32,
+    /// Reserved for ABI stability; always zero.
+    pub reserved: u32,
+}
+
+/// Configure/reset or read the worker-yield trace buffer.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuWorkerYieldTraceQuery {
+    /// CONFIG_RESET or READ operation code.
+    pub operation: u32,
+    /// CONFIG_RESET: 1 enables collection, 0 disables it. READ returns state.
+    pub enabled: u32,
+    /// CONFIG_RESET: requested kernel capacity; zero selects the default.
+    /// READ: capacity of the userspace record array, in elements.
+    pub capacity: u32,
+    /// READ: number of records copied to userspace.
+    pub count: u32,
+    /// Set when the kernel buffer or userspace array was too small.
+    pub overflowed: u32,
+    /// Must be initialized to zero by userspace.
+    pub reserved: u32,
+    /// Userspace `RknpuWorkerYieldTraceRecord[]` address for READ.
+    pub records_address: u64,
+}
+
+/// Replace the current trace with a fresh enabled or disabled buffer.
+pub const RKNPU_WORKER_YIELD_TRACE_CONFIG_RESET: u32 = 0;
+/// Copy one snapshot to userspace without clearing it.
+pub const RKNPU_WORKER_YIELD_TRACE_READ: u32 = 1;
+/// The Worker was waiting for at least one inflight hardware dispatch.
+pub const RKNPU_WORKER_YIELD_REASON_INFLIGHT: u32 = 1;
+/// Live scheduler work existed but no dispatch was currently possible.
+pub const RKNPU_WORKER_YIELD_REASON_STALLED: u32 = 2;
+/// Default capacity: 10 MiB of 40-byte records, allocated only when enabled.
+pub const RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY: usize = 262_144;
+/// Safety ceiling for explicit experiments: 40 MiB of 40-byte records.
+pub const RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY: usize = 1_048_576;
+
+/// 一条调度事件的原始记录，最后修改日期：2026-08-07。
+///
+/// 驱动只保存原始事实，不在内核中计算平均值或百分位。用户态通过
+/// `queue_task` 将 Enqueue、Dispatch、Complete 事件归并到同一个 Submit，
+/// 再通过 `task_index`、`core_slot` 和 `lane_slot` 检查 Task 是否重复或丢失。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuScheduleTraceRecord {
+    /// 事件写入缓冲区时分配的连续序号，用于检测记录缺口或重复。
+    pub sequence: u64,
+    /// 事件发生时的单调时钟，单位为纳秒。
+    pub timestamp_ns: u64,
+    /// 驱动为一次 Submit 分配的内部唯一编号。
+    pub queue_task: u64,
+    /// 该 Submit 的调度优先级；数值越小，优先级越高。
+    pub priority: i32,
+    /// 事件类型，对应 Enqueue、Dispatch、Complete 或 Failed 位。
+    pub event_type: u32,
+    /// 用户态写入任务描述符的操作编号，用于匹配测试线程和 Task。
+    pub op_idx: u32,
+    /// 当前事件对应的 Task 在 Submit 任务数组中的下标。
+    pub task_index: u32,
+    /// 实际执行该 Task 的物理 NPU 核心编号；入队事件使用无效值。
+    pub core_slot: u32,
+    /// 当前 Task 所属的 Submit 逻辑 lane；入队事件使用无效值。
+    pub lane_slot: u32,
+    /// Dispatch 来自 Ready 提升还是 Running 续派；其他事件为 NONE。
+    pub dispatch_source: u32,
+    /// 作出 Dispatch 决策时，该核心可执行的最高优先级 Ready 值。
+    pub ready_priority: i32,
+}
+
+/// 调度事件测试 ioctl 的输入输出参数，最后修改日期：2026-08-07。
+///
+/// `operation` 决定其余字段的方向：CONFIG_RESET 使用 `event_mask`；READ
+/// 使用用户提供的 `capacity` 和 `records_address`；STATE 使用
+/// `state_address`。所有地址和容量都必须在驱动 copy-out 前完成检查。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuScheduleTraceQuery {
+    /// CONFIG_RESET、READ 或 STATE 操作码。
+    pub operation: u32,
+    /// 需要保存的事件位；READ 时返回当前已启用的事件位。
+    pub event_mask: u32,
+    /// 用户态记录数组可容纳的元素数量，不是字节数。
+    pub capacity: u32,
+    /// 驱动本次实际复制到用户态的记录数量。
+    pub count: u32,
+    /// 内核缓冲区已满或用户容量不足时返回 1。
+    pub overflowed: u32,
+    /// 保持结构布局稳定，用户态必须初始化为 0。
+    pub reserved: u32,
+    /// READ 操作使用的用户态 `RknpuScheduleTraceRecord[]` 地址。
+    pub records_address: u64,
+    /// STATE 操作使用的用户态 `RknpuSchedulerStateSnapshot` 地址。
+    pub state_address: u64,
+}
+
+/// 测试结束时读取的调度器与 GEM 资源状态，最后修改日期：2026-08-07。
+///
+/// 该结构用于比较测试前后的资源基线，并验证 blocking Submit 返回后没有
+/// 遗留 Ready、Running、waiter 或核心绑定。它只暴露数量，不暴露内核地址。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RknpuSchedulerStateSnapshot {
+    /// `tasks` 所有者表中仍存活的 Submit 数量。
+    pub live_submits: u32,
+    /// 所有优先级 Ready 桶中的 Submit 条目总数。
+    pub ready_entries: u32,
+    /// 所有优先级 Running 桶中的 Submit 条目总数。
+    pub running_entries: u32,
+    /// 已完成但尚未被 ioctl 路径取走的 Submit 数量。
+    pub complete_entries: u32,
+    /// 尚未删除的 blocking Submit waiter 数量。
+    pub waiters: u32,
+    /// 当前物理核心到 Task 的活动绑定数量。
+    pub core_bindings: u32,
+    /// 驱动 GEM 池仍持有的 DMA 缓冲区数量。
+    pub gem_buffers: u32,
+    /// 保持 64 位字段对齐。
+    pub reserved: u32,
+    /// 驱动 GEM 池仍持有的 DMA 总字节数。
+    pub gem_bytes: u64,
+}
+
+/// 清空旧记录并按照 `event_mask` 开始或停止记录。
+pub const RKNPU_SCHEDULE_TRACE_CONFIG_RESET: u32 = 0;
+/// 一次性读取当前记录快照，不清空内核缓冲区。
+pub const RKNPU_SCHEDULE_TRACE_READ: u32 = 1;
+/// 读取调度器和 GEM 资源数量快照。
+pub const RKNPU_SCHEDULE_TRACE_STATE: u32 = 2;
+/// Submit 已经进入 Ready 队列。
+pub const RKNPU_SCHEDULE_EVENT_ENQUEUE: u32 = 1 << 0;
+/// 一个 Task 已经开始走底层 NPU 下发路径。
+pub const RKNPU_SCHEDULE_EVENT_DISPATCH: u32 = 1 << 1;
+/// 驱动已经从对应核心收割该 Task 的完成状态。
+pub const RKNPU_SCHEDULE_EVENT_COMPLETE: u32 = 1 << 2;
+/// DMA 同步或底层下发失败。
+pub const RKNPU_SCHEDULE_EVENT_FAILED: u32 = 1 << 3;
+pub const RKNPU_SCHEDULE_EVENT_ALL: u32 = RKNPU_SCHEDULE_EVENT_ENQUEUE
+    | RKNPU_SCHEDULE_EVENT_DISPATCH
+    | RKNPU_SCHEDULE_EVENT_COMPLETE
+    | RKNPU_SCHEDULE_EVENT_FAILED;
+/// 非 Dispatch 事件没有选择来源。
+pub const RKNPU_DISPATCH_SOURCE_NONE: u32 = 0;
+/// 当前 Task 来自 Ready Submit 的首次提升或重新提升。
+pub const RKNPU_DISPATCH_SOURCE_READY: u32 = 1;
+/// 当前 Task 来自已经处于 Running 状态的 Submit。
+pub const RKNPU_DISPATCH_SOURCE_RUNNING: u32 = 2;
+/// 6 线程、102 轮、每 Submit 10 Task 完整记录需要 12,852 条。
+pub const RKNPU_SCHEDULE_TRACE_CAPACITY: usize = 16384;
+/// 事件不存在核心、lane 或 Task 下标时使用的无效值。
+pub const RKNPU_SCHEDULE_TRACE_NO_VALUE: u32 = u32::MAX;
+/// 作出决策时没有可执行 Ready Submit。
+pub const RKNPU_SCHEDULE_TRACE_NO_PRIORITY: i32 = i32::MAX;
+
 impl Rknpu {
     /// Dispatches one queued task to one hardware core.
     ///
@@ -242,12 +460,29 @@ impl Rknpu {
 
 #[cfg(test)]
 mod tests {
-    use super::RknpuSubmit;
+    use super::{
+        RknpuScheduleTraceQuery, RknpuScheduleTraceRecord, RknpuSchedulerStateSnapshot,
+        RknpuSubmit, RknpuSubmitTraceQuery, RknpuSubmitTraceRecord,
+        RknpuWorkerYieldTraceQuery, RknpuWorkerYieldTraceRecord,
+    };
     use crate::{Rknpu, RknpuConfig, RknpuError, RknpuTask, RknpuType};
-    use alloc::vec::Vec;
+    use alloc::{vec, vec::Vec};
     use core::ptr::NonNull;
 
     const FAKE_MMIO_LEN: usize = 0x10000;
+
+    #[test]
+    fn submit_trace_abi_size_is_stable() {
+        // DRM ioctl 编码包含结构尺寸。这里同时固定 Rust 侧四阶段记录、调度
+        // 事件和状态快照的大小，必须与 rknpu-ioctl.h 的 C 静态断言一致。
+        assert_eq!(core::mem::size_of::<RknpuSubmitTraceRecord>(), 48);
+        assert_eq!(core::mem::size_of::<RknpuSubmitTraceQuery>(), 24);
+        assert_eq!(core::mem::size_of::<RknpuWorkerYieldTraceRecord>(), 40);
+        assert_eq!(core::mem::size_of::<RknpuWorkerYieldTraceQuery>(), 32);
+        assert_eq!(core::mem::size_of::<RknpuScheduleTraceRecord>(), 56);
+        assert_eq!(core::mem::size_of::<RknpuScheduleTraceQuery>(), 40);
+        assert_eq!(core::mem::size_of::<RknpuSchedulerStateSnapshot>(), 40);
+    }
 
     fn build_fake_rknpu() -> (Rknpu, Vec<Vec<u8>>) {
         let mut mmios = vec![vec![0_u8; FAKE_MMIO_LEN]; 3];
@@ -314,7 +549,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(tasks[0].int_status, 0);
+        let int_status = tasks[0].int_status;  // 创建副本
+	assert_eq!(int_status, 0);
         assert_eq!(
             npu.base[0]
                 .irq_status

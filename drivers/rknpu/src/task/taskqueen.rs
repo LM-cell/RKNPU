@@ -6,12 +6,14 @@
 //! dispatch decisions. It does not own ready/running/complete buckets or any
 //! per-core binding state; that belongs to the StarryOS scheduler layer.
 
-// Submit-latency instrumentation last modified: 2026-08-03.
+// Submit 延迟与 Dynamic Task 状态最后修改日期：2026-08-18。
 
 #![allow(dead_code)]
 
 use crate::{
-    RKNPU_MAX_SUBCORE_TASKS, RknpuError, RknpuTask, core_mask_from_index,
+    RKNPU_JOB_DYNAMIC_TASKS, RKNPU_JOB_HARDWARE_MASK, RKNPU_MAX_SUBCORE_TASKS,
+    RKNPU_SUBMIT_ALLOWED_FLAGS, RKNPU_VALID_CORE_MASK, RknpuError, RknpuTask,
+    core_mask_from_index,
     ioctrl::{RknpuSubcoreTask, RknpuSubmit},
 };
 use alloc::vec::Vec;
@@ -46,6 +48,43 @@ pub struct SubmitMeta {
 }
 
 impl SubmitMeta {
+    /// 校验动态模式的调度输入，最后修改日期：2026-08-18。
+    ///
+    /// 静态模式保持原兼容行为。动态模式要求 Lane 按下标连续、无重叠地覆盖
+    /// 全部 Task，保证共享 Ready 集合不会遗漏或重复派发用户任务。
+    pub fn dynamic_layout_is_valid(submit: &RknpuSubmit) -> bool {
+        if submit.flags & RKNPU_JOB_DYNAMIC_TASKS == 0 {
+            return true;
+        }
+        if submit.flags & !RKNPU_SUBMIT_ALLOWED_FLAGS != 0
+            || submit.core_mask & !RKNPU_VALID_CORE_MASK != 0
+            || submit.task_number == 0
+        {
+            return false;
+        }
+
+        let mut next_task = 0u32;
+        for lane in submit.subcore_task {
+            if lane.task_number == 0 {
+                if lane.task_start != 0 {
+                    return false;
+                }
+                continue;
+            }
+            if lane.task_start != next_task {
+                return false;
+            }
+            let Some(end) = lane.task_start.checked_add(lane.task_number) else {
+                return false;
+            };
+            if end > submit.task_number {
+                return false;
+            }
+            next_task = end;
+        }
+        next_task == submit.task_number
+    }
+
     /// Build immutable scheduler metadata from one ioctl submit.
     ///
     /// If userspace leaves every `subcore_task[]` entry empty, lane 0 is
@@ -77,6 +116,16 @@ impl SubmitMeta {
             .get(lane_slot)
             .copied()
             .filter(|lane| lane.task_number > 0)
+    }
+
+    /// 动态模式只改变 Task 选择，不改变 Submit 的阻塞完成语义。
+    pub fn uses_dynamic_tasks(&self) -> bool {
+        self.flags & RKNPU_JOB_DYNAMIC_TASKS != 0
+    }
+
+    /// 剥离调度器专用标志，只把原有硬件位传入寄存器执行路径。
+    pub fn hardware_flags(&self) -> u32 {
+        self.flags & RKNPU_JOB_HARDWARE_MASK
     }
 }
 
@@ -165,8 +214,8 @@ impl RknpuQueuedSubmit {
 /// - one running bit per lane so the same lane cannot be dispatched twice
 /// - the last terminal error, if any
 ///
-/// No explicit ready/running/completed enum is stored here. Those states are
-/// derived from `lane_isrun`, remaining dispatchable work, and `last_error`.
+/// 静态模式由 Lane 游标和运行位表示进度；动态模式只保存下一个 Task、运行数
+/// 和完成数。Ready/Running/Complete Submit 桶仍由上层调度器统一维护。
 #[derive(Debug, Clone)]
 pub struct RknpuQueueTask {
     /// Stable scheduler-visible submit id.
@@ -182,6 +231,12 @@ pub struct RknpuQueueTask {
     /// Per-lane running bit. `true` means that lane already owns one in-flight
     /// dispatch on some hardware core.
     pub lane_isrun: [bool; RKNPU_MAX_SUBCORE_TASKS],
+    /// 动态模式下，下一个尚未预留的 Task 下标。
+    dynamic_next_task: u32,
+    /// 动态模式下，已经绑定物理核心但尚未完成的 Task 数量。
+    dynamic_running_tasks: u32,
+    /// 动态模式下，已经由完成路径确认的 Task 数量。
+    dynamic_completed_tasks: u32,
     /// Last scheduler or driver error seen by this submit.
     pub last_error: Option<RknpuError>,
     /// Coarse submit phase timestamps collected without changing scheduling.
@@ -198,6 +253,9 @@ impl RknpuQueueTask {
             tasks: queued_submit.tasks,
             subcore_cursors: [0; RKNPU_MAX_SUBCORE_TASKS],
             lane_isrun: [false; RKNPU_MAX_SUBCORE_TASKS],
+            dynamic_next_task: 0,
+            dynamic_running_tasks: 0,
+            dynamic_completed_tasks: 0,
             last_error: None,
             latency: queued_submit.latency,
         }
@@ -222,6 +280,9 @@ impl RknpuQueueTask {
 
     /// Return how many task completions make this submit terminal on success.
     fn completion_target(&self) -> u32 {
+        if self.meta.uses_dynamic_tasks() {
+            return self.meta.task_total;
+        }
         let total = self
             .meta
             .lane_ranges
@@ -237,6 +298,9 @@ impl RknpuQueueTask {
 
     /// Return how many task completions already happened across all lanes.
     pub fn completed_task_count(&self) -> u32 {
+        if self.meta.uses_dynamic_tasks() {
+            return self.dynamic_completed_tasks.min(self.meta.task_total);
+        }
         self.subcore_cursors
             .iter()
             .copied()
@@ -270,14 +334,18 @@ impl RknpuQueueTask {
         submit
     }
 
-    /// Return true if at least one logical lane currently owns a hardware core.
-    pub fn has_running_lanes(&self) -> bool {
-        self.lane_isrun.iter().copied().any(|running| running)
+    /// 返回是否至少有一个 Task 已经绑定物理核心且尚未完成。
+    pub fn has_running_tasks(&self) -> bool {
+        if self.meta.uses_dynamic_tasks() {
+            self.dynamic_running_tasks != 0
+        } else {
+            self.lane_isrun.iter().copied().any(|running| running)
+        }
     }
 
-    /// Return true if the submit can still dispatch at least one more lane.
-    pub fn has_dispatchable_lane(&self) -> bool {
-        self.next_dispatchable_lane().is_some()
+    /// 返回该 Submit 是否还有可以立即派发的 Task。
+    pub fn has_dispatchable_task(&self) -> bool {
+        self.next_dispatchable_task().is_some()
     }
 
     /// Return true if the submit finished successfully.
@@ -287,7 +355,7 @@ impl RknpuQueueTask {
 
     /// Return true if the submit faulted and all running lanes already drained.
     pub fn is_terminal_fault(&self) -> bool {
-        self.last_error.is_some() && !self.has_running_lanes()
+        self.last_error.is_some() && !self.has_running_tasks()
     }
 
     /// Return true if this submit may use the specified physical core.
@@ -296,13 +364,20 @@ impl RknpuQueueTask {
         mask == 0 || (mask & core_mask_from_index(core_slot)) != 0
     }
 
-    /// Return the next lane/task pair that may be dispatched right now.
+    /// 返回当前可派发的“来源 Lane、Task 下标”。
     ///
-    /// Once `last_error` is set, no new work may be issued. Existing running
-    /// lanes are still allowed to drain through normal completion.
-    pub fn next_dispatchable_lane(&self) -> Option<(usize, u32)> {
+    /// 出错后停止领取新 Task，已经运行的 Task 仍通过正常完成路径排空。
+    pub fn next_dispatchable_task(&self) -> Option<(usize, u32)> {
         if self.last_error.is_some() {
             return None;
+        }
+
+        if self.meta.uses_dynamic_tasks() {
+            let task_index = self.dynamic_next_task;
+            if task_index >= self.meta.task_total || task_index as usize >= self.tasks.len() {
+                return None;
+            }
+            return self.origin_lane_for_task(task_index).map(|lane| (lane, task_index));
         }
 
         for lane_slot in 0..RKNPU_MAX_SUBCORE_TASKS {
@@ -322,22 +397,44 @@ impl RknpuQueueTask {
             if task_index >= self.meta.task_total || task_index as usize >= self.tasks.len() {
                 continue;
             }
-
             return Some((lane_slot, task_index));
         }
 
         None
     }
 
-    /// Mark one lane as owning an in-flight hardware dispatch.
-    pub fn mark_lane_running(&mut self, lane_slot: usize) {
-        if let Some(running) = self.lane_isrun.get_mut(lane_slot) {
+    /// 预留一个 Task 并记录其核心绑定，最后修改日期：2026-08-18。
+    ///
+    /// 调用方必须传入刚从 `next_dispatchable_task()` 得到的二元组。本函数再次
+    /// 比较期望值，防止调度器状态变化后重复预留同一个 Task。
+    pub fn reserve_dispatch(&mut self, lane_slot: usize, task_index: u32) -> bool {
+        if self.next_dispatchable_task() != Some((lane_slot, task_index)) {
+            return false;
+        }
+
+        if self.meta.uses_dynamic_tasks() {
+            self.dynamic_next_task += 1;
+            self.dynamic_running_tasks += 1;
+            true
+        } else if let Some(running) = self.lane_isrun.get_mut(lane_slot) {
             *running = true;
+            true
+        } else {
+            false
         }
     }
 
-    /// Mark one dispatched lane as completed and advance its cursor by one task.
-    pub fn complete_lane(&mut self, lane_slot: usize) {
+    /// 完成一个已绑定 Task；动态模式按 Task 计数，静态模式继续推进原 Lane。
+    pub fn complete_dispatch(&mut self, lane_slot: usize) {
+        if self.meta.uses_dynamic_tasks() {
+            self.dynamic_running_tasks = self.dynamic_running_tasks.saturating_sub(1);
+            self.dynamic_completed_tasks = self
+                .dynamic_completed_tasks
+                .saturating_add(1)
+                .min(self.meta.task_total);
+            return;
+        }
+
         if let Some(running) = self.lane_isrun.get_mut(lane_slot) {
             *running = false;
         }
@@ -355,11 +452,26 @@ impl RknpuQueueTask {
     ///
     /// This path is used for dispatch/setup failures. The lane's cursor is not
     /// advanced because the task never completed on hardware.
-    pub fn fail_lane(&mut self, lane_slot: usize, err: RknpuError) {
+    pub fn fail_dispatch(&mut self, lane_slot: usize, err: RknpuError) {
+        if self.meta.uses_dynamic_tasks() {
+            self.dynamic_running_tasks = self.dynamic_running_tasks.saturating_sub(1);
+            self.last_error = Some(err);
+            return;
+        }
+
         if let Some(running) = self.lane_isrun.get_mut(lane_slot) {
             *running = false;
         }
         self.last_error = Some(err);
+    }
+
+    /// 返回 Task 原本所属的逻辑 Lane，仅用于 trace 和静态/动态对照。
+    fn origin_lane_for_task(&self, task_index: u32) -> Option<usize> {
+        self.meta.lane_ranges.iter().enumerate().find_map(|(lane_slot, lane)| {
+            let end = lane.task_start.checked_add(lane.task_number)?;
+            (lane.task_number > 0 && task_index >= lane.task_start && task_index < end)
+                .then_some(lane_slot)
+        })
     }
 }
 
@@ -422,9 +534,12 @@ mod tests {
         /// Reserve the next dispatch using the same running-before-ready policy.
         fn reserve_next_dispatch(&mut self, core_slot: usize) -> Option<Dispatch> {
             if let Some(dispatch) = self.find_running_candidate(core_slot) {
-                self.tasks
+                let reserved = self.tasks
                     .get_mut(&dispatch.task_id)?
-                    .mark_lane_running(dispatch.lane_slot as usize);
+                    .reserve_dispatch(dispatch.lane_slot as usize, dispatch.task_index);
+                if !reserved {
+                    return None;
+                }
                 return Some(dispatch);
             }
 
@@ -433,9 +548,12 @@ mod tests {
             Self::push_bucket(&mut self.running, priority, task_id);
 
             let dispatch = self.find_running_candidate(core_slot)?;
-            self.tasks
+            let reserved = self.tasks
                 .get_mut(&dispatch.task_id)?
-                .mark_lane_running(dispatch.lane_slot as usize);
+                .reserve_dispatch(dispatch.lane_slot as usize, dispatch.task_index);
+            if !reserved {
+                return None;
+            }
             Some(dispatch)
         }
 
@@ -446,7 +564,7 @@ mod tests {
             task_error: bool,
         ) -> Option<RknpuQueueTaskId> {
             if let Some(task) = self.tasks.get_mut(&dispatch.task_id) {
-                task.complete_lane(dispatch.lane_slot as usize);
+                task.complete_dispatch(dispatch.lane_slot as usize);
                 if task_error {
                     task.last_error = Some(RknpuError::TaskError);
                 }
@@ -462,7 +580,7 @@ mod tests {
             err: RknpuError,
         ) -> Option<RknpuQueueTaskId> {
             if let Some(task) = self.tasks.get_mut(&dispatch.task_id) {
-                task.fail_lane(dispatch.lane_slot as usize, err);
+                task.fail_dispatch(dispatch.lane_slot as usize, err);
             }
 
             self.reclassify(dispatch.task_id)
@@ -478,7 +596,7 @@ mod tests {
                     if !task.allows_core(core_slot) {
                         continue;
                     }
-                    if let Some((lane_slot, task_index)) = task.next_dispatchable_lane() {
+                    if let Some((lane_slot, task_index)) = task.next_dispatchable_task() {
                         return Some(Dispatch {
                             task_id: *task_id,
                             lane_slot: lane_slot as u8,
@@ -499,7 +617,7 @@ mod tests {
                 if let Some(queue) = self.ready.get(&priority) {
                     selected = queue.iter().position(|task_id| {
                         self.tasks.get(task_id).is_some_and(|task| {
-                            task.allows_core(core_slot) && task.has_dispatchable_lane()
+                            task.allows_core(core_slot) && task.has_dispatchable_task()
                         })
                     });
                 }
@@ -529,8 +647,8 @@ mod tests {
                 return None;
             };
             let priority = task.meta.priority;
-            let has_running = task.has_running_lanes();
-            let has_dispatchable = task.has_dispatchable_lane();
+            let has_running = task.has_running_tasks();
+            let has_dispatchable = task.has_dispatchable_task();
             let terminal_success = task.is_terminal_success();
             let terminal_fault = task.is_terminal_fault();
 
@@ -610,6 +728,14 @@ mod tests {
     ) -> RknpuSubmit {
         let mut submit = fake_submit(task_number, priority, subcore_tasks);
         submit.core_mask = core_mask;
+        submit
+    }
+
+    /// 构造显式启用动态 Task 领取的 Submit。
+    fn fake_dynamic_submit(task_number: u32, ranges: &[(usize, u32, u32)]) -> RknpuSubmit {
+        let mut submit = fake_submit(task_number, 0, ranges);
+        submit.flags = crate::RKNPU_JOB_PC | RKNPU_JOB_DYNAMIC_TASKS;
+        submit.core_mask = RKNPU_VALID_CORE_MASK;
         submit
     }
 
@@ -695,20 +821,40 @@ mod tests {
     #[test]
     fn running_submit_is_prioritized_before_new_ready_submit() {
         let mut queue = TestBuckets::new();
+
+        // 旧 Submit：2 个 Task，2 条 Lane
         let running = RknpuQueuedSubmit::new(
             fake_submit(2, 10, &[(0, 0, 1), (1, 1, 1)]),
             vec![fake_task(0x100), fake_task(0x200)],
         );
-        let ready =
-            RknpuQueuedSubmit::new(fake_submit(1, -10, &[(0, 0, 1)]), vec![fake_task(0x300)]);
 
-        // 向core 0派发第一条lane，使旧提交真正进入running状态
-        assert_eq!(queue.reserve_next_dispatch(0).unwrap().task_id,running_id);
+        // 新 Submit：优先级更高，但当前还是 Ready
+        let ready = RknpuQueuedSubmit::new(
+            fake_submit(1, -10, &[(0, 0, 1)]),
+            vec![fake_task(0x300)],
+        );
+
+        // 1. 旧 Submit 先进入 Ready 队列
         let running_id = queue.enqueue(running);
+
+        // 2. 向 core0 派发第一条 Lane
+        //    此时旧 Submit 从 Ready → Running
+        assert_eq!(
+            queue.reserve_next_dispatch(0).unwrap().task_id,
+            running_id
+        );
+
+        // 3. 此时再加入新的高优先级 Ready Submit
         let ready_id = queue.enqueue(ready);
 
-        
-        assert_eq!(queue.reserve_next_dispatch(1).unwrap().task_id, running_id);
+        // 4. core1 请求任务
+        //    按当前策略：Running Submit 优先于新的 Ready Submit
+        assert_eq!(
+            queue.reserve_next_dispatch(1).unwrap().task_id,
+            running_id
+        );
+
+        // 两个 Submit 必须是不同对象
         assert_ne!(running_id, ready_id);
     }
 
@@ -725,6 +871,138 @@ mod tests {
 
         assert_eq!(first.lane_slot, 0);
         assert!(queue.reserve_next_dispatch(1).is_none());
+    }
+
+    #[test]
+    fn dynamic_mode_allows_multiple_cores_to_take_one_origin_lane() {
+        let mut queue = TestBuckets::new();
+        let submit = RknpuQueuedSubmit::new(
+            fake_dynamic_submit(4, &[(0, 0, 4)]),
+            vec![fake_task(0x100); 4],
+        );
+
+        queue.enqueue(submit);
+        let first = queue.reserve_next_dispatch(0).unwrap();
+        let second = queue.reserve_next_dispatch(1).unwrap();
+        let third = queue.reserve_next_dispatch(2).unwrap();
+
+        assert_eq!((first.lane_slot, first.task_index), (0, 0));
+        assert_eq!((second.lane_slot, second.task_index), (0, 1));
+        assert_eq!((third.lane_slot, third.task_index), (0, 2));
+    }
+
+    #[test]
+    fn dynamic_mode_completes_out_of_order_without_duplicate_tasks() {
+        let mut queue = TestBuckets::new();
+        let submit = RknpuQueuedSubmit::new(
+            fake_dynamic_submit(4, &[(0, 0, 2), (1, 2, 2)]),
+            vec![fake_task(0x100); 4],
+        );
+        let task_id = queue.enqueue(submit);
+        let first = queue.reserve_next_dispatch(0).unwrap();
+        let second = queue.reserve_next_dispatch(1).unwrap();
+        let third = queue.reserve_next_dispatch(2).unwrap();
+
+        assert!(queue.complete_dispatch(second, false).is_none());
+        let fourth = queue.reserve_next_dispatch(1).unwrap();
+        assert_eq!(fourth.task_index, 3);
+        assert_eq!(fourth.lane_slot, 1);
+        assert!(queue.complete_dispatch(first, false).is_none());
+        assert!(queue.complete_dispatch(fourth, false).is_none());
+        assert_eq!(queue.complete_dispatch(third, false), Some(task_id));
+
+        let finished = queue.take_terminal_task(task_id).unwrap();
+        assert_eq!(finished.build_submit().task_counter, 4);
+        assert!(finished.is_terminal_success());
+    }
+
+    #[test]
+    fn dynamic_mode_dispatches_all_48_tasks_once() {
+        let mut queue = TestBuckets::new();
+        let submit = RknpuQueuedSubmit::new(
+            fake_dynamic_submit(48, &[(0, 0, 16), (1, 16, 16), (2, 32, 16)]),
+            vec![fake_task(0x100); 48],
+        );
+        let task_id = queue.enqueue(submit);
+        let mut active = [
+            queue.reserve_next_dispatch(0),
+            queue.reserve_next_dispatch(1),
+            queue.reserve_next_dispatch(2),
+        ];
+        let mut completed = [false; 48];
+        let mut terminal = None;
+
+        // Core0 模拟较快核心：每轮先完成并立即领取；随后再处理 Core1、Core2。
+        while active.iter().any(Option::is_some) {
+            for core in [0usize, 0, 1, 0, 2] {
+                let Some(dispatch) = active[core].take() else {
+                    continue;
+                };
+                assert!(!completed[dispatch.task_index as usize]);
+                completed[dispatch.task_index as usize] = true;
+                terminal = queue.complete_dispatch(dispatch, false).or(terminal);
+                active[core] = queue.reserve_next_dispatch(core);
+            }
+        }
+
+        assert!(completed.iter().all(|done| *done));
+        assert_eq!(terminal, Some(task_id));
+        assert_eq!(
+            queue
+                .take_terminal_task(task_id)
+                .unwrap()
+                .build_submit()
+                .task_counter,
+            48
+        );
+    }
+
+    #[test]
+    fn ready_submit_fills_tail_when_dynamic_running_submit_has_no_ready_task() {
+        let mut queue = TestBuckets::new();
+        let running = RknpuQueuedSubmit::new(
+            fake_dynamic_submit(2, &[(0, 0, 1), (1, 1, 1)]),
+            vec![fake_task(0x100); 2],
+        );
+        let ready = RknpuQueuedSubmit::new(
+            fake_submit(1, -10, &[(0, 0, 1)]),
+            vec![fake_task(0x200)],
+        );
+        let running_id = queue.enqueue(running);
+
+        assert_eq!(queue.reserve_next_dispatch(0).unwrap().task_id, running_id);
+        assert_eq!(queue.reserve_next_dispatch(1).unwrap().task_id, running_id);
+        let ready_id = queue.enqueue(ready);
+
+        assert_eq!(queue.reserve_next_dispatch(2).unwrap().task_id, ready_id);
+    }
+
+    #[test]
+    fn dynamic_layout_rejects_gaps_overlap_and_unknown_bits() {
+        let valid = fake_dynamic_submit(4, &[(0, 0, 2), (1, 2, 2)]);
+        let gap = fake_dynamic_submit(4, &[(0, 0, 1), (1, 2, 2)]);
+        let overlap = fake_dynamic_submit(4, &[(0, 0, 3), (1, 2, 2)]);
+        let mut unknown_flag = valid.clone();
+        unknown_flag.flags |= 1 << 12;
+        let mut invalid_core = valid.clone();
+        invalid_core.core_mask = 1 << 8;
+
+        assert!(SubmitMeta::dynamic_layout_is_valid(&valid));
+        assert!(!SubmitMeta::dynamic_layout_is_valid(&gap));
+        assert!(!SubmitMeta::dynamic_layout_is_valid(&overlap));
+        assert!(!SubmitMeta::dynamic_layout_is_valid(&unknown_flag));
+        assert!(!SubmitMeta::dynamic_layout_is_valid(&invalid_core));
+        assert_eq!(
+            SubmitMeta::from_submit(&valid, 4).hardware_flags(),
+            crate::RKNPU_JOB_PC
+        );
+    }
+
+    #[test]
+    fn static_mode_keeps_legacy_partial_lane_layout() {
+        let submit = fake_submit(4, 0, &[(0, 1, 2)]);
+
+        assert!(SubmitMeta::dynamic_layout_is_valid(&submit));
     }
 
     #[test]

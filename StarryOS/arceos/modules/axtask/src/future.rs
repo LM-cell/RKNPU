@@ -1,3 +1,4 @@
+// RKNPU Worker 专用抢占唤醒支持，最后修改日期：2026-08-17。
 use alloc::{sync::Arc, task::Wake};
 use core::{
     fmt,
@@ -23,6 +24,18 @@ use crate::{
 struct AxWaker {
     task: WeakAxTaskRef,
     woke: AtomicBool,
+    /// 外部 Future Waker 是否在解除阻塞时请求当前 CPU 重新调度。
+    resched_on_wake: bool,
+}
+
+impl AxWaker {
+    /// 解除目标任务阻塞；是否请求重调度由明确的调用场景传入。
+    fn unblock(&self, resched: bool) {
+        if let Some(task) = self.task.upgrade() {
+            self.woke.store(true, Ordering::Release);
+            select_run_queue::<NoPreemptIrqSave>(&task).unblock_task(task, resched);
+        }
+    }
 }
 
 impl Wake for AxWaker {
@@ -31,10 +44,7 @@ impl Wake for AxWaker {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        if let Some(task) = self.task.upgrade() {
-            self.woke.store(true, Ordering::Release);
-            select_run_queue::<NoPreemptIrqSave>(&task).unblock_task(task, false);
-        }
+        self.unblock(self.resched_on_wake);
     }
 }
 
@@ -55,6 +65,7 @@ pub fn block_on<F: IntoFuture>(f: F) -> F::Output {
     let waker = Arc::new(AxWaker {
         task: Arc::downgrade(&task),
         woke: AtomicBool::new(false),
+        resched_on_wake: false,
     });
     let woke = &waker.woke;
     let waker = Waker::from(waker.clone());
@@ -77,6 +88,44 @@ pub fn block_on<F: IntoFuture>(f: F) -> F::Output {
                 }
             }
             Poll::Ready(output) => break output,
+        }
+    }
+}
+
+/// 阻塞当前任务，并在外部 Waker 唤醒时请求当前 CPU 重新调度。
+///
+/// 最后修改日期：2026-08-17。该窄接口仅供 RKNPU completion Worker 使用。
+/// 同 CPU 唤醒会设置 `need_resched`，实际任务切换仍发生在 IRQ 退出后的可调度点；
+/// 跨 CPU 重调度仍沿用现有 run queue 语义，本次不增加 IPI。硬中断内不执行
+/// 驱动调度和 NPU 派发。
+pub fn block_on_resched<F: IntoFuture>(f: F) -> F::Output {
+    let mut fut = pin!(f.into_future());
+    let task = current().clone();
+    let waker = Arc::new(AxWaker {
+        task: Arc::downgrade(&task),
+        woke: AtomicBool::new(false),
+        resched_on_wake: true,
+    });
+    let woke = &waker.woke;
+    let task_waker = Waker::from(waker.clone());
+    let mut cx = Context::from_waker(&task_waker);
+
+    loop {
+        // 清除上一轮通知；Future 自己保存真正的就绪状态。
+        woke.store(false, Ordering::Release);
+        match fut.as_mut().poll(&mut cx) {
+            Poll::Ready(output) => break output,
+            Poll::Pending if woke.load(Ordering::Acquire) => continue,
+            Poll::Pending => {
+                let mut rq = current_run_queue::<NoPreemptIrqSave>();
+                rq.blocked_resched(|_| {
+                    // 覆盖 poll 返回 Pending 到任务标记 Blocked 之间的漏唤醒窗口。
+                    // 这是内部补偿唤醒，不应设置 need_resched。
+                    if woke.load(Ordering::Acquire) {
+                        waker.unblock(false);
+                    }
+                });
+            }
         }
     }
 }

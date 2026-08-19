@@ -1,5 +1,4 @@
-
-
+// RKNPU主模块仿真测试导入修正，最后修改日期：2026-08-04。
 #![no_std]
 
 extern crate alloc;
@@ -34,8 +33,6 @@ pub use status::*;
 pub use task::*;
 pub mod ioctrl;
 use crate::data::RknpuData;
-#[cfg(feature = "starryos")]
-pub use crate::power::*;
 use crate::registers::RknpuCore;
 
 const VERSION_MAJOR: u32 = 0;
@@ -538,7 +535,10 @@ unsafe impl Send for RknpuIrqHandler {}
 unsafe impl Sync for RknpuIrqHandler {}
 
 impl RknpuIrqHandler {
-    /// Read and clear pending interrupts, returning the fuzzed status.
+    /// 读取、清除并发布中断状态，返回归一化后的完成位。
+    ///
+    /// 最后修改日期：2026-08-17。IRQ 路径只转发到底层原子状态发布逻辑，
+    /// 不在这里记录日志、分配内存或进入调度器。
     pub fn handle(&self) -> u32 {
         self.0.handle_interrupt()
     }
@@ -571,6 +571,7 @@ impl DerefMut for Rknpu {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     fn build_test_npu(core_count: usize) -> Rknpu {
         let mut mmios = (0..core_count)

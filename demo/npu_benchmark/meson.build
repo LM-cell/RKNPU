@@ -53,23 +53,74 @@ core_scaling_benchmark_fix = executable(
     link_args : '-lm'
 )
 
-# Concurrent blocking-submit test.  It reuses the existing NPU helpers and
-# only adds the pthread dependency required by this target.
+# 多线程七场景 blocking Submit 测试，最后修改日期：2026-08-12。
+# 两个程序复用同一场景负载模块，pthread 仅用于并发 Submit 和轮次同步。
 thread_dep = dependency('threads')
 rknpu_multithread_submit = executable(
     'rknpu_multithread_submit',
-    ['tests/rknpu_multithread_submit.c', 'src/benchmark_stats.c'],
+    [
+        'tests/rknpu_multithread_submit.c',
+        'src/rknpu_scenario_workload.c',
+        'src/rknpu_performance_report.c',
+        'src/benchmark_stats.c',
+    ],
     include_directories : incdir,
     link_with : lib,
     dependencies : thread_dep,
     link_args : '-lm'
 )
 
-
-# 核心数量参数化测试，最后修改日期：2026-08-05。
+# 核心数量参数化测试，最后修改日期：2026-08-12。
 rknpu_multithread_submit_core = executable(
     'rknpu_multithread_submit_core',
-    ['tests/rknpu_multithread_submit_core.c', 'src/benchmark_stats.c'],
+    [
+        'tests/rknpu_multithread_submit_core.c',
+        'src/rknpu_scenario_workload.c',
+        'src/rknpu_performance_report.c',
+        'src/benchmark_stats.c',
+    ],
+    include_directories : incdir,
+    link_with : lib,
+    dependencies : thread_dep,
+    link_args : '-lm'
+)
+
+rknpu_scenario_workload_test = executable(
+    'rknpu_scenario_workload_test',
+    [
+        'tests/rknpu_scenario_workload_test.c',
+        'src/rknpu_scenario_workload.c',
+    ],
+    include_directories : incdir,
+    link_with : lib,
+    link_args : '-lm'
+)
+test('rknpu scenario workload', rknpu_scenario_workload_test)
+
+# 48 Task 混合负载的 Dynamic Lane / Admission 对照测试，最后修改日期：2026-08-18。
+# 新负载模块负责四种矩阵形状的 GEM 所有权，测试程序负责并发、计时和 trace。
+rknpu_dynamic_lane_benchmark = executable(
+    'rknpu_dynamic_lane_benchmark',
+    [
+        'tests/rknpu_dynamic_lane_benchmark.c',
+        'src/rknpu_mixed_workload.c',
+    ],
+    include_directories : incdir,
+    link_with : lib,
+    dependencies : thread_dep,
+    link_args : '-lm'
+)
+
+# 并发优先级与四阶段延迟测试，最后修改日期：2026-08-07。
+# rknpu_batch_workload 封装 10 Task DMA/命令/校验；benchmark_stats 复用现有
+# Mean/P50/P95/P99 口径；thread_dep 只用于共享 fd 的并发 blocking Submit。
+rknpu_priority_benchmark = executable(
+    'rknpu_priority_benchmark',
+    [
+        'tests/rknpu_priority_benchmark.c',
+        'src/rknpu_batch_workload.c',
+        'src/benchmark_stats.c',
+    ],
     include_directories : incdir,
     link_with : lib,
     dependencies : thread_dep,

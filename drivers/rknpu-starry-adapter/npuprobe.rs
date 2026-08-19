@@ -10,6 +10,7 @@ use crate::tool::iomap;
 use crate::enable_pm;
 use crate::irq::NPU_IRQ_HANDLERS;
 use crate::irq::NPU_IRQ_FNS;
+use crate::card1::init_rknpu_service;
 #[cfg(target_arch = "aarch64")]
 use crate::power::irq_yield;
 
@@ -76,20 +77,13 @@ pub fn rknpu_probe(info: FdtInfo<'_>, plat_dev: PlatformDevice) -> Result<(), On
     #[allow(unused_mut)] // mut needed for set_wait_fn on aarch64
     let mut npu = Rknpu::new(&base_regs, config);
 
-    // Register one IRQ callback per visible NPU core.
-    //
-    // Flow:
-    //  1. Parse each core IRQ from the FDT node.
-    //  2. Build a lightweight per-core handler from `Rknpu`.
-    //  3. Store it in a global slot because the platform only accepts `fn()`.
-    //  4. Register the trampoline with the IRQ framework.
-    //  5. Enable interrupt-driven waiting afterwards.
-    //
-    // Completion path after a task finishes:
-    //  NPU raises IRQ -> GIC routes it -> handle_npu_irq_coreN() ->
-    //  RknpuIrqHandler::handle() -> read/clear hardware state ->
-    //  publish irq_status -> waiting CPU wakes up -> submit path observes
-    //  completion and continues.
+    // 最后修改日期：2026-08-17。必须在启用 IRQ 前初始化 Event 唤醒链路，
+    // 防止第一次硬件中断在 IRQ 上下文触发调度服务的懒初始化和内存分配。
+    init_rknpu_service();
+
+    // 每个可见 NPU 核心注册一个 IRQ 回调。完成路径为：NPU 产生中断，
+    // RknpuIrqHandler 读取、清除并发布 irq_status，Event 唤醒调度 worker，
+    // worker 在普通任务上下文回收完成状态并继续派发 Ready Task。
     let interrupts = info.interrupts();
     for (i, irq_cells) in interrupts.iter().enumerate() {
         if i >= 3 {

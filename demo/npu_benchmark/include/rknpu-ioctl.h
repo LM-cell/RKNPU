@@ -106,7 +106,13 @@ enum e_rknpu_job_mode {
         RKNPU_JOB_FENCE_OUT = 1 << 4,
         RKNPU_JOB_MASK = RKNPU_JOB_PC | RKNPU_JOB_NONBLOCK |
                          RKNPU_JOB_PINGPONG | RKNPU_JOB_FENCE_IN |
-                         RKNPU_JOB_FENCE_OUT
+                         RKNPU_JOB_FENCE_OUT,
+        /*
+         * Submit 内动态 Task 领取标志，最后修改日期：2026-08-18。
+         * 该位只影响 StarryOS 调度器，不进入 NPU 硬件 JobMode。
+         */
+        RKNPU_JOB_DYNAMIC_TASKS = 1 << 5,
+        RKNPU_SUBMIT_ALLOWED_MASK = RKNPU_JOB_MASK | RKNPU_JOB_DYNAMIC_TASKS
 };
 
 /* action definitions */
@@ -288,12 +294,173 @@ struct rknpu_action {
         __u32 value;
 };
 
+/* Submit 四阶段延迟测试接口，最后修改日期：2026-08-07。 */
+struct rknpu_submit_trace_record {
+        /* 驱动内部 Submit 唯一编号，用于关联调度事件。 */
+        __u64 queue_task;
+        /* ioctl 进入驱动、尚未 copy-in 的时间。 */
+        __u64 t0_ns;
+        /* Submit 已进入调度队列的时间。 */
+        __u64 t1_ns;
+        /* 第一个 Task 开始底层 NPU 下发的时间。 */
+        __u64 t2_ns;
+        /* 最后一个 Task 完成状态被收割的时间。 */
+        __u64 t3_ns;
+        /* Task 和 Submit 完成用户态 copy-out 的时间。 */
+        __u64 t4_ns;
+};
+
+struct rknpu_submit_trace_query {
+        /* RESET 或 READ。 */
+        __u32 operation;
+        /* 用户记录数组容量，单位为条数。 */
+        __u32 capacity;
+        /* 驱动实际复制的记录数量。 */
+        __u32 count;
+        /* 内核缓冲区满或用户数组不足时为 1。 */
+        __u32 overflowed;
+        /* 用户态 struct rknpu_submit_trace_record[] 地址。 */
+        __u64 records_address;
+};
+
+/*
+ * One in-memory timing sample around the scheduler Worker's yield_now().
+ * Userspace computes yield_gap_ns = yield_end_ns - yield_start_ns.
+ */
+struct rknpu_worker_yield_trace_record {
+        /* Append order inside the driver trace buffer. */
+        __u64 sequence;
+        /* Owning Submit id; zero means no single owner could be identified. */
+        __u64 queue_task;
+        /* Monotonic timestamp immediately before yield_now(). */
+        __u64 yield_start_ns;
+        /* Monotonic timestamp immediately after yield_now() returned. */
+        __u64 yield_end_ns;
+        /* INFLIGHT or STALLED reason code. */
+        __u32 reason;
+        /* ABI padding; always emitted as zero by the driver. */
+        __u32 reserved;
+};
+
+/* Configure/reset or read the Worker-yield experiment buffer. */
+struct rknpu_worker_yield_trace_query {
+        /* CONFIG_RESET or READ. */
+        __u32 operation;
+        /* CONFIG_RESET input; READ returns the current enabled state. */
+        __u32 enabled;
+        /* CONFIG_RESET requested kernel capacity; READ output-array capacity. */
+        __u32 capacity;
+        /* Number of records copied by READ. */
+        __u32 count;
+        /* Kernel-buffer or userspace-capacity overflow indicator. */
+        __u32 overflowed;
+        /* ABI padding; must be zero. */
+        __u32 reserved;
+        /* Userspace struct rknpu_worker_yield_trace_record[] address. */
+        __u64 records_address;
+};
+
+/* 调度事件与资源状态测试接口，最后修改日期：2026-08-07。 */
+struct rknpu_schedule_trace_record {
+        /* 驱动按实际写入顺序分配的连续事件序号。 */
+        __u64 sequence;
+        /* 事件发生时的驱动单调时钟，单位为纳秒。 */
+        __u64 timestamp_ns;
+        /* 一次 blocking Submit 在驱动调度器中的唯一编号。 */
+        __u64 queue_task;
+        /* Submit 优先级，数值越小优先级越高。 */
+        __s32 priority;
+        /* ENQUEUE、DISPATCH、COMPLETE 或 FAILED 事件位。 */
+        __u32 event_type;
+        /* 用户态 Task 的操作编号，用于匹配测试线程和任务。 */
+        __u32 op_idx;
+        /* Task 在当前 Submit 任务数组中的下标。 */
+        __u32 task_index;
+        /* 实际下发或完成该 Task 的物理 NPU 核心。 */
+        __u32 core_slot;
+        /* Task 所属的 Submit 逻辑 lane。 */
+        __u32 lane_slot;
+        /* NONE、READY 或 RUNNING，表示本次 Dispatch 的选择来源。 */
+        __u32 dispatch_source;
+        /* 作出 Dispatch 决策时，该核心可执行的最高 Ready 优先级。 */
+        __s32 ready_priority;
+};
+
+struct rknpu_schedule_trace_query {
+        /* CONFIG_RESET、READ 或 STATE。 */
+        __u32 operation;
+        /* 配置的事件位；READ 时返回驱动当前事件位。 */
+        __u32 event_mask;
+        /* records_address 指向的数组容量，单位为记录条数。 */
+        __u32 capacity;
+        /* 驱动实际复制到用户数组的记录数量。 */
+        __u32 count;
+        /* 内核缓冲区已满或用户数组不足时为 1。 */
+        __u32 overflowed;
+        /* ABI 保留字段，调用者初始化为 0。 */
+        __u32 reserved;
+        /* 用户态 struct rknpu_schedule_trace_record[] 地址。 */
+        __u64 records_address;
+        /* 用户态 struct rknpu_scheduler_state_snapshot 地址。 */
+        __u64 state_address;
+};
+
+struct rknpu_scheduler_state_snapshot {
+        /* 调度器仍持有的 Submit 数量。 */
+        __u32 live_submits;
+        /* 所有 Ready 优先级桶中的条目总数。 */
+        __u32 ready_entries;
+        /* 所有 Running 优先级桶中的条目总数。 */
+        __u32 running_entries;
+        /* 已完成但尚未由 ioctl 取走的 Submit 数量。 */
+        __u32 complete_entries;
+        /* 尚未删除的 blocking waiter 数量。 */
+        __u32 waiters;
+        /* 当前核心到 Task 的活动绑定数量。 */
+        __u32 core_bindings;
+        /* GEM 池仍持有的 DMA 缓冲区数量。 */
+        __u32 gem_buffers;
+        /* 64 位字段对齐保留值。 */
+        __u32 reserved;
+        /* GEM 池仍持有的 DMA 总字节数。 */
+        __u64 gem_bytes;
+};
+
 #define RKNPU_ACTION 0x00
 #define RKNPU_SUBMIT 0x01
 #define RKNPU_MEM_CREATE 0x02
 #define RKNPU_MEM_MAP 0x03
 #define RKNPU_MEM_DESTROY 0x04
 #define RKNPU_MEM_SYNC 0x05
+#define RKNPU_SUBMIT_TRACE 0x06
+#define RKNPU_SCHEDULE_TRACE 0x07
+#define RKNPU_WORKER_YIELD_TRACE 0x08
+
+#define RKNPU_SUBMIT_TRACE_RESET 0U
+#define RKNPU_SUBMIT_TRACE_READ 1U
+#define RKNPU_SUBMIT_TRACE_CAPACITY 1024U
+
+#define RKNPU_WORKER_YIELD_TRACE_CONFIG_RESET 0U
+#define RKNPU_WORKER_YIELD_TRACE_READ 1U
+#define RKNPU_WORKER_YIELD_REASON_INFLIGHT 1U
+#define RKNPU_WORKER_YIELD_REASON_STALLED 2U
+#define RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY 262144U
+#define RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY 1048576U
+
+#define RKNPU_SCHEDULE_TRACE_CONFIG_RESET 0U
+#define RKNPU_SCHEDULE_TRACE_READ 1U
+#define RKNPU_SCHEDULE_TRACE_STATE 2U
+#define RKNPU_SCHEDULE_EVENT_ENQUEUE (1U << 0)
+#define RKNPU_SCHEDULE_EVENT_DISPATCH (1U << 1)
+#define RKNPU_SCHEDULE_EVENT_COMPLETE (1U << 2)
+#define RKNPU_SCHEDULE_EVENT_FAILED (1U << 3)
+#define RKNPU_SCHEDULE_EVENT_ALL ((1U << 4) - 1U)
+#define RKNPU_DISPATCH_SOURCE_NONE 0U
+#define RKNPU_DISPATCH_SOURCE_READY 1U
+#define RKNPU_DISPATCH_SOURCE_RUNNING 2U
+#define RKNPU_SCHEDULE_TRACE_CAPACITY 16384U
+#define RKNPU_SCHEDULE_TRACE_NO_VALUE 0xffffffffU
+#define RKNPU_SCHEDULE_TRACE_NO_PRIORITY 0x7fffffff
 
 #define RKNPU_IOC_MAGIC 'r'
 #define RKNPU_IOW(nr, type) _IOW(RKNPU_IOC_MAGIC, nr, type)
@@ -314,6 +481,15 @@ struct rknpu_action {
         DRM_IOWR(DRM_COMMAND_BASE + RKNPU_MEM_DESTROY, struct rknpu_mem_destroy)
 #define DRM_IOCTL_RKNPU_MEM_SYNC                                               \
         DRM_IOWR(DRM_COMMAND_BASE + RKNPU_MEM_SYNC, struct rknpu_mem_sync)
+#define DRM_IOCTL_RKNPU_SUBMIT_TRACE                                           \
+        DRM_IOWR(DRM_COMMAND_BASE + RKNPU_SUBMIT_TRACE,                        \
+                 struct rknpu_submit_trace_query)
+#define DRM_IOCTL_RKNPU_SCHEDULE_TRACE                                         \
+        DRM_IOWR(DRM_COMMAND_BASE + RKNPU_SCHEDULE_TRACE,                      \
+                 struct rknpu_schedule_trace_query)
+#define DRM_IOCTL_RKNPU_WORKER_YIELD_TRACE                                     \
+        DRM_IOWR(DRM_COMMAND_BASE + RKNPU_WORKER_YIELD_TRACE,                  \
+                 struct rknpu_worker_yield_trace_query)
 
 #define IOCTL_RKNPU_ACTION RKNPU_IOWR(RKNPU_ACTION, struct rknpu_action)
 #define IOCTL_RKNPU_SUBMIT RKNPU_IOWR(RKNPU_SUBMIT, struct rknpu_submit)

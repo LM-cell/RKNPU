@@ -1,4 +1,4 @@
-// Submit-latency instrumentation last modified: 2026-08-03.
+// Submit 延迟与 IRQ 唤醒适配，最后修改日期：2026-08-17。
 use alloc::string::ToString;
 use core::{
     any::Any,
@@ -10,7 +10,7 @@ use core::{
 use axerrno::AxError;
 use axfs_ng_vfs::{DeviceId, NodeFlags, VfsError, VfsResult};
 #[cfg(target_arch = "aarch64")]
-use axtask::future::block_on;
+use axtask::future::block_on_resched;
 use event_listener::Event;
 use lazy_static::lazy_static;
 use memory_addr::{MemoryAddr, PhysAddrRange};
@@ -114,7 +114,9 @@ struct StarryWorkerListener(event_listener::EventListener);
 impl RknpuWorkerListener for StarryWorkerListener {
     fn wait(self) {
         #[cfg(target_arch = "aarch64")]
-        let _ = block_on(self.0);
+        // 最后修改日期：2026-08-17。completion IRQ 唤醒后在 IRQ 返回点
+        // 请求重新调度，缩短 Worker 进入 harvest/refill 的 Ready 等待时间。
+        let _ = block_on_resched(self.0);
         #[cfg(not(target_arch = "aarch64"))]
         let _ = self.0;
     }
@@ -194,6 +196,8 @@ impl RknpuSchedulerRuntime for StarryPlatform {
         }
     }
 
+    /// 仅在调度器 stalled、且没有可等待的硬件 IRQ 时让出当前 CPU。
+    /// 最后修改日期：2026-08-17。
     fn yield_now(&self) {
         #[cfg(target_arch = "aarch64")]
         axtask::yield_now();
@@ -204,6 +208,22 @@ impl RknpuSchedulerRuntime for StarryPlatform {
 
 lazy_static! {
     static ref RKNPU_SERVICE: RknpuService<StarryPlatform> = RknpuService::new(StarryPlatform);
+}
+
+/// 在注册 NPU IRQ 前初始化调度服务及其 Event。
+///
+/// 最后修改日期：2026-08-17。这样 IRQ 路径只执行通知，不会在中断上下文
+/// 首次构造 lazy_static 对象或分配 Event 内部状态。
+pub(crate) fn init_rknpu_service() {
+    let _ = &*RKNPU_SERVICE;
+}
+
+/// 从 NPU completion IRQ 唤醒阻塞中的调度 worker。
+///
+/// 最后修改日期：2026-08-17。该函数只复用 StarryWorkerSignal/EventListener
+/// 通知链路，不读取调度队列、不获取调度器业务锁，也不直接派发任务。
+pub(crate) fn notify_rknpu_worker() {
+    RKNPU_SERVICE.notify_irq_completion();
 }
 
 fn map_vfs_to_service_error(err: VfsError) -> RknpuServiceError {

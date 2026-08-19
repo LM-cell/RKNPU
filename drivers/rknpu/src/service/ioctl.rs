@@ -1,10 +1,21 @@
-// Submit-latency instrumentation last modified: 2026-08-03.
+// RKNPU 测试观测与 Dynamic Submit 校验，最后修改日期：2026-08-18。
 use alloc::vec;
 use core::{convert::TryFrom, mem};
 
 use crate::{
-    RknpuAction, RknpuQueuedSubmit, RknpuTask,
-    ioctrl::{RknpuMemCreate, RknpuMemDestroy, RknpuMemMap, RknpuMemSync, RknpuSubmit},
+    RknpuAction, RknpuQueuedSubmit, RknpuTask, SubmitMeta,
+    ioctrl::{
+        RKNPU_SCHEDULE_EVENT_ALL, RKNPU_SCHEDULE_TRACE_CAPACITY,
+        RKNPU_SCHEDULE_TRACE_CONFIG_RESET, RKNPU_SCHEDULE_TRACE_READ,
+        RKNPU_SCHEDULE_TRACE_STATE, RKNPU_SUBMIT_TRACE_CAPACITY,
+        RKNPU_SUBMIT_TRACE_READ, RKNPU_SUBMIT_TRACE_RESET, RknpuMemCreate,
+        RknpuMemDestroy, RknpuMemMap, RknpuMemSync, RknpuScheduleTraceQuery,
+        RknpuScheduleTraceRecord, RknpuSchedulerStateSnapshot, RknpuSubmit,
+        RKNPU_WORKER_YIELD_TRACE_CONFIG_RESET, RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY,
+        RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY, RKNPU_WORKER_YIELD_TRACE_READ,
+        RknpuSubmitTraceQuery, RknpuSubmitTraceRecord, RknpuWorkerYieldTraceQuery,
+        RknpuWorkerYieldTraceRecord,
+    },
 };
 
 use super::{RknpuPlatform, RknpuService, RknpuServiceError};
@@ -12,6 +23,7 @@ use super::{RknpuPlatform, RknpuService, RknpuServiceError};
 /// RKNPU driver-ioctl command numbers.
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+//rknpuCmdRKNPU驱动程序的ioctl命令编号。每个变体对应一个特定的ioctl操作，例如提交任务、创建内存、映射内存等，可以将历史的ioctl编号转换为内部命令枚举，从而在驱动程序中处理不同的ioctl请求。
 pub enum RknpuCmd {
     /// Generic action/query command.
     Action = 0x00,
@@ -25,6 +37,12 @@ pub enum RknpuCmd {
     MemDestroy = 0x04,
     /// DMA buffer sync command.
     MemSync = 0x05,
+    /// 测试专用的 Submit 延迟记录命令。
+    SubmitTrace = 0x06,
+    /// 测试专用的调度事件配置、读取和资源状态命令。
+    ScheduleTrace = 0x07,
+    /// Experiment-only in-memory timestamps around Worker yield calls.
+    WorkerYieldTrace = 0x08,
 }
 
 impl TryFrom<u32> for RknpuCmd {
@@ -39,6 +57,9 @@ impl TryFrom<u32> for RknpuCmd {
             0x03 | 0x43 => Ok(Self::MemMap),
             0x04 | 0x44 => Ok(Self::MemDestroy),
             0x05 | 0x45 => Ok(Self::MemSync),
+            0x06 | 0x46 => Ok(Self::SubmitTrace),
+            0x07 | 0x47 => Ok(Self::ScheduleTrace),
+            0x08 | 0x48 => Ok(Self::WorkerYieldTrace),
             _ => Err(()),
         }
     }
@@ -73,6 +94,9 @@ impl<P: RknpuPlatform> RknpuService<P> {
             RknpuCmd::MemMap => self.handle_mem_map_ioctl(arg),
             RknpuCmd::MemDestroy => self.handle_mem_destroy_ioctl(arg),
             RknpuCmd::MemSync => self.handle_mem_sync_ioctl(arg),
+            RknpuCmd::SubmitTrace => self.handle_submit_trace_ioctl(arg),
+            RknpuCmd::ScheduleTrace => self.handle_schedule_trace_ioctl(arg),
+            RknpuCmd::WorkerYieldTrace => self.handle_worker_yield_trace_ioctl(arg),
             RknpuCmd::Action => self.handle_action_ioctl(arg),
         }
     }
@@ -99,7 +123,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
 
     /// Handle a blocking submit ioctl from task-array copy-in to terminal copy-back.
     fn handle_submit_ioctl(&self, arg: usize) -> Result<usize, RknpuServiceError> {
-        // t0: submit enters the driver.
+        // t0：Submit ioctl 已进入驱动。
         let submit_enter_time_ns = self.inner.platform.monotonic_time_ns();
         let submit_args = self.copy_from_user::<RknpuSubmit>(arg)?;
 
@@ -108,6 +132,17 @@ impl<P: RknpuPlatform> RknpuService<P> {
                 "rknpu invalid submit header: task_number={}, task_array_cpu_address={:#x}, \
                  task_array_dma_address={:#x}",
                 submit_args.task_number, submit_args.task_array_cpu_address, submit_args.task_array_dma_address,
+            );
+            return Err(RknpuServiceError::InvalidData);
+        }
+
+        // 动态模式在分配内核 Task 数组前完成全部布局校验，最后修改日期：2026-08-18。
+        // 非法 flags、core mask、Lane 重叠、空洞或越界均不得进入调度器状态。
+        if !SubmitMeta::dynamic_layout_is_valid(&submit_args) {
+            debug!(
+                "rknpu invalid dynamic submit layout: flags={:#x} core_mask={:#x} \
+                 task_number={}",
+                submit_args.flags, submit_args.core_mask, submit_args.task_number
             );
             return Err(RknpuServiceError::InvalidData);
         }
@@ -176,23 +211,208 @@ impl<P: RknpuPlatform> RknpuService<P> {
             return Err(RknpuServiceError::Driver(err));
         }
 
-        // t4: copy-out is complete.
+        // t4：任务数组和 Submit 已经计算完完成并完整复制回用户空间。
         let submit_return_time_ns = self.inner.platform.monotonic_time_ns();
-        info!(
-            "[rknpu-latency] queue_task={} t0_ns={} t1_ns={} t2_ns={} t3_ns={} t4_ns={} \
-             submit_prepare_ns={} queue_wait_ns={} dispatch_execute_ns={} complete_return_ns={}",
-            queue_task_id,
-            latency.t0_ns,
-            latency.t1_ns,
-            latency.t2_ns,
-            latency.t3_ns,
-            submit_return_time_ns,
-            latency.t1_ns - latency.t0_ns,
-            latency.t2_ns - latency.t1_ns,
-            latency.t3_ns - latency.t2_ns,
-            submit_return_time_ns - latency.t3_ns
-        );
+        self.record_submit_trace(RknpuSubmitTraceRecord {
+            queue_task: queue_task_id,
+            t0_ns: latency.t0_ns,
+            t1_ns: latency.t1_ns,
+            t2_ns: latency.t2_ns,
+            t3_ns: latency.t3_ns,
+            t4_ns: submit_return_time_ns,
+        });
 
+        Ok(0)
+    }
+
+    /// 复位或一次性读取 Submit 延迟记录。
+    fn handle_submit_trace_ioctl(&self, arg: usize) -> Result<usize, RknpuServiceError> {
+        let mut query = self.copy_from_user::<RknpuSubmitTraceQuery>(arg)?;
+
+        match query.operation {
+            RKNPU_SUBMIT_TRACE_RESET => {
+                self.reset_submit_trace();
+                query.count = 0;
+                query.overflowed = 0;
+            }
+            RKNPU_SUBMIT_TRACE_READ => {
+                let capacity = query.capacity as usize;
+                if capacity > RKNPU_SUBMIT_TRACE_CAPACITY {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+                if capacity > 0 && query.records_address == 0 {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+
+                let (records, overflowed) = self.snapshot_submit_trace(capacity);
+                let record_bytes = records
+                    .len()
+                    .checked_mul(mem::size_of::<RknpuSubmitTraceRecord>())
+                    .ok_or(RknpuServiceError::InvalidInput)?;
+                if record_bytes > 0 {
+                    let records_address = usize::try_from(query.records_address)
+                        .map_err(|_| RknpuServiceError::InvalidInput)?;
+                    self.inner.platform.copy_to_user(
+                        records_address as *mut u8,
+                        records.as_ptr() as *const u8,
+                        record_bytes,
+                    )?;
+                }
+                query.count = records.len() as u32;
+                query.overflowed = if overflowed { 1 } else { 0 };
+            }
+            _ => return Err(RknpuServiceError::InvalidInput),
+        }
+
+        self.copy_to_user(arg, &query)?;
+        Ok(0)
+    }
+
+    /// Configure/reset or read the experiment-only Worker yield trace.
+    ///
+    /// All allocation happens during CONFIG_RESET or READ. The measured Worker
+    /// path only appends pre/post timestamps to the already allocated buffer.
+    fn handle_worker_yield_trace_ioctl(
+        &self,
+        arg: usize,
+    ) -> Result<usize, RknpuServiceError> {
+        let mut query = self.copy_from_user::<RknpuWorkerYieldTraceQuery>(arg)?;
+        if query.reserved != 0 {
+            return Err(RknpuServiceError::InvalidInput);
+        }
+
+        match query.operation {
+            RKNPU_WORKER_YIELD_TRACE_CONFIG_RESET => {
+                if query.enabled > 1 {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+                let enabled = query.enabled != 0;
+                let capacity = if !enabled {
+                    0
+                } else if query.capacity == 0 {
+                    RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY
+                } else {
+                    query.capacity as usize
+                };
+                if capacity > RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+                self.configure_worker_yield_trace(enabled, capacity)?;
+                query.capacity = capacity as u32;
+                query.count = 0;
+                query.overflowed = 0;
+            }
+            RKNPU_WORKER_YIELD_TRACE_READ => {
+                let capacity = query.capacity as usize;
+                if capacity > RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY
+                    || (capacity > 0 && query.records_address == 0)
+                {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+
+                let (records, enabled, overflowed) =
+                    self.snapshot_worker_yield_trace(capacity)?;
+                let record_bytes = records
+                    .len()
+                    .checked_mul(mem::size_of::<RknpuWorkerYieldTraceRecord>())
+                    .ok_or(RknpuServiceError::InvalidInput)?;
+                if record_bytes > 0 {
+                    let records_address = usize::try_from(query.records_address)
+                        .map_err(|_| RknpuServiceError::InvalidInput)?;
+                    self.inner.platform.copy_to_user(
+                        records_address as *mut u8,
+                        records.as_ptr() as *const u8,
+                        record_bytes,
+                    )?;
+                }
+                query.enabled = if enabled { 1 } else { 0 };
+                query.count = records.len() as u32;
+                query.overflowed = if overflowed { 1 } else { 0 };
+            }
+            _ => return Err(RknpuServiceError::InvalidInput),
+        }
+
+        self.copy_to_user(arg, &query)?;
+        Ok(0)
+    }
+
+    /// 配置、读取调度事件或获取资源状态，最后修改日期：2026-08-07。
+    ///
+    /// `query` 来自用户空间，操作码、事件位、容量和地址都不可信。该接口
+    /// 先完成范围与乘法检查，再取得内核快照，最后在不持有调度器、设备或
+    /// trace 锁的情况下 copy-out，避免非法指针破坏锁内状态。
+    fn handle_schedule_trace_ioctl(&self, arg: usize) -> Result<usize, RknpuServiceError> {
+        let mut query = self.copy_from_user::<RknpuScheduleTraceQuery>(arg)?;
+
+        match query.operation {
+            RKNPU_SCHEDULE_TRACE_CONFIG_RESET => {
+                // 未定义事件位直接拒绝，避免用户态与内核对记录语义理解不同。
+                if query.event_mask & !RKNPU_SCHEDULE_EVENT_ALL != 0 {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+                // event_mask=0 表示关闭；非零表示开始一轮新的独立实验。
+                self.configure_schedule_trace(query.event_mask);
+                query.count = 0;
+                query.overflowed = 0;
+            }
+            RKNPU_SCHEDULE_TRACE_READ => {
+                let capacity = query.capacity as usize;
+                // capacity 是元素数量。非零容量必须配套有效的用户数组地址。
+                if capacity > RKNPU_SCHEDULE_TRACE_CAPACITY
+                    || (capacity > 0 && query.records_address == 0)
+                {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+
+                // snapshot_schedule_trace 返回内核拥有的 Vec；后续不再持有 trace 锁。
+                let (records, event_mask, overflowed) =
+                    self.snapshot_schedule_trace(capacity);
+                // 用户控制 capacity，字节数必须使用 checked_mul，禁止整数回绕。
+                let record_bytes = records
+                    .len()
+                    .checked_mul(mem::size_of::<RknpuScheduleTraceRecord>())
+                    .ok_or(RknpuServiceError::InvalidInput)?;
+                if record_bytes > 0 {
+                    let records_address = usize::try_from(query.records_address)
+                        .map_err(|_| RknpuServiceError::InvalidInput)?;
+                    self.inner.platform.copy_to_user(
+                        records_address as *mut u8,
+                        records.as_ptr() as *const u8,
+                        record_bytes,
+                    )?;
+                }
+                query.event_mask = event_mask;
+                query.count = records.len() as u32;
+                query.overflowed = if overflowed { 1 } else { 0 };
+            }
+            RKNPU_SCHEDULE_TRACE_STATE => {
+                // STATE 固定复制一个结构，不接受空输出地址。
+                if query.state_address == 0 {
+                    return Err(RknpuServiceError::InvalidInput);
+                }
+
+                // 先取调度快照并释放调度锁，再获取设备锁读取 GEM，固定锁顺序。
+                let mut state = self.snapshot_scheduler_state();
+                let (gem_buffers, gem_bytes) = self.with_npu_driver(|rknpu_dev| {
+                    Ok((
+                        rknpu_dev.active_buffer_count(),
+                        rknpu_dev.active_byte_count(),
+                    ))
+                })?;
+                state.gem_buffers = gem_buffers as u32;
+                state.gem_bytes = gem_bytes as u64;
+
+                let state_address = usize::try_from(query.state_address)
+                    .map_err(|_| RknpuServiceError::InvalidInput)?;
+                self.copy_to_user::<RknpuSchedulerStateSnapshot>(state_address, &state)?;
+                query.count = 0;
+                query.overflowed = 0;
+            }
+            _ => return Err(RknpuServiceError::InvalidInput),
+        }
+
+        // 最后把 count、overflowed 和当前 event_mask 返回给调用者。
+        self.copy_to_user(arg, &query)?;
         Ok(0)
     }
 

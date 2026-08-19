@@ -29,6 +29,8 @@
 //! Each allocation is a contiguous, page-aligned, DMA-capable region
 //! (`DVec<u8>`) accessible both by the CPU and by the NPU.
 
+// 测试资源状态接口，最后修改日期：2026-08-07。
+
 use alloc::collections::btree_map::BTreeMap;
 use core::mem::size_of;
 
@@ -99,6 +101,21 @@ impl GemPool {
         self.pool
             .get(&handle)
             .map(|dvec| (dvec.bus_addr(), dvec.len()))
+    }
+
+    /// 返回当前仍由驱动持有的 GEM 缓冲区数量。
+    ///
+    /// 测试在分配前和释放后各读取一次，用来发现 handle 已从用户态释放、
+    /// 但驱动池仍保留 DMA 对象的生命周期泄漏。
+    pub fn active_buffer_count(&self) -> usize {
+        self.pool.len()
+    }
+
+    /// 返回当前仍由驱动持有的 GEM 总字节数。
+    ///
+    /// 数量相同但对象大小发生变化时，字节基线仍能检测出资源状态不一致。
+    pub fn active_byte_count(&self) -> usize {
+        self.pool.values().map(|buffer| buffer.len()).sum()
     }
 
     /// Read a `u64` command stream slice from a GEM buffer by DMA address.
