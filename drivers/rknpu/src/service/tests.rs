@@ -620,6 +620,23 @@ fn irq_notification_wakes_blocked_worker() {
 }
 
 #[test]
+fn yield_polling_worker_completes_without_irq_wake() {
+    // 最后修改日期：2026-08-19。显式选择 YieldPolling 后只发布硬件完成状态，
+    // 不发送 Event 通知；Worker 必须通过 yield 轮询回收 Task 并结束 Submit。
+    let platform = MockPlatform::new();
+    let service = RknpuService::new_with_worker_wait_mode(
+        platform.clone(),
+        super::RknpuWorkerWaitMode::YieldPolling,
+    );
+    let submitter = spawn_tagged_submit(service.clone(), 1, 0, 50_000, 0x1, vec![1]);
+
+    wait_until(|| service.has_inflight_dispatches());
+    assert_eq!(platform.worker_wait_count(), 0);
+    platform.publish_completion_status(0, 0x100);
+    join_submit(submitter);
+}
+
+#[test]
 fn submit_trace_reset_and_read_roundtrip() {
     // 先复位 trace，再完成一个 Submit 并读取记录。除数量外，还要求
     // t0<=t1<=t2<=t3<=t4；再次复位后读取必须为空。

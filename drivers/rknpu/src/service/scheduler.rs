@@ -1,4 +1,4 @@
-// Submit 延迟、调度事件与 IRQ 唤醒，最后修改日期：2026-08-17。
+// Submit 延迟、调度事件与 Worker 等待策略，最后修改日期：2026-08-19。
 use alloc::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
@@ -29,7 +29,7 @@ use crate::{
 
 use super::{
     RknpuPlatform, RknpuService, RknpuServiceError, RknpuSubmitWaiter, RknpuWorkerListener,
-    RknpuWorkerSignal,
+    RknpuWorkerSignal, RknpuWorkerWaitMode,
 };
 
 /// Monotonic task-id generator for queued blocking submits.
@@ -805,10 +805,13 @@ impl<P: RknpuPlatform> RknpuService<P> {
 
     /// 通知调度 worker 已有新的 NPU completion 状态可回收。
     ///
-    /// 最后修改日期：2026-08-17。该入口只转发到平台的 IRQ-safe 唤醒对象，
+    /// 最后修改日期：2026-08-19。Event/Waker 模式转发到 IRQ-safe 唤醒对象；
+    /// YieldPolling 模式由 Worker 轮询状态，不产生额外 Event 通知。两种模式都
     /// 不获取调度状态锁、不操作 Ready/Running 队列，也不直接派发任务。
     pub fn notify_irq_completion(&self) {
-        self.inner.scheduler.kick.notify_one();
+        if self.inner.worker_wait_mode == RknpuWorkerWaitMode::IrqEvent {
+            self.inner.scheduler.kick.notify_one();
+        }
     }
 
     /// Block the caller until the specified submit becomes terminal.
@@ -1223,13 +1226,18 @@ impl<P: RknpuPlatform> RknpuService<P> {
 
     /// 单 worker 调度循环：回收完成任务、派发 Ready 任务，再按三种状态等待或重试。
     ///
-    /// 最后修改日期：2026-08-17。每轮先建立监听器，再读取 completion 和调度
-    /// 状态，保证 IRQ 或新 Submit 落在“检查状态”和“开始等待”之间时不会丢失唤醒。
+    /// 最后修改日期：2026-08-19。inflight completion 可选择 Event/Waker 或
+    /// `yield_now()` 轮询；无 live work 时始终等待新 Submit，避免空转。
     fn worker_main(self) {
         debug!("[rknpu-scheduler] worker thread started");
         let mut stalled_yields = 0u32;
         loop {
-            let listener = self.inner.scheduler.kick.listen();
+            // Event/Waker 模式必须在检查 completion 前注册监听，避免 IRQ 落在
+            // “检查状态”和“开始等待”之间。YieldPolling 模式不创建无用监听器。
+            let listener = match self.inner.worker_wait_mode {
+                RknpuWorkerWaitMode::IrqEvent => Some(self.inner.scheduler.kick.listen()),
+                RknpuWorkerWaitMode::YieldPolling => None,
+            };
             let harvested = self.harvest_completed_cores();
             let dispatched = self.dispatch_idle_cores();
 
@@ -1243,18 +1251,39 @@ impl<P: RknpuPlatform> RknpuService<P> {
                 (state.has_inflight(), state.has_live_work())
             };
             if has_inflight {
-                // 正常 NPU 执行期间只等待 completion IRQ，不再持续 yield 轮询。
-                debug!(
-                    "[rknpu-scheduler] worker sleeping reason=inflight_completion \
-                     has_inflight={} has_work={}",
-                    has_inflight, has_work
-                );
-                listener.wait();
+                // 最后修改日期：2026-08-19。两种版本只在这个等待点分流，
+                // completion 回收和后续 refill 仍走完全相同的调度流程。
+                match self.inner.worker_wait_mode {
+                    RknpuWorkerWaitMode::IrqEvent => {
+                        debug!(
+                            "[rknpu-scheduler] worker sleeping reason=inflight_completion \
+                             has_inflight={} has_work={}",
+                            has_inflight, has_work
+                        );
+                        // IrqEvent 模式在本轮入口必定已经建立 listener。
+                        listener.unwrap().wait();
+                    }
+                    RknpuWorkerWaitMode::YieldPolling => {
+                        // 轮询热路径不打印日志，避免日志级别判断影响基线性能。
+                        self.inner.platform.yield_now();
+                    }
+                }
                 continue;
             }
 
             if !has_work {
-                // 当前没有 Submit，等待下一次 enqueue 通知。
+                // 当前没有 Submit，等待下一次 enqueue 通知。YieldPolling 模式
+                // 此时才注册监听并复查状态，覆盖“先入队、后监听”的竞争窗口。
+                let listener = match listener {
+                    Some(listener) => listener,
+                    None => {
+                        let listener = self.inner.scheduler.kick.listen();
+                        if self.inner.scheduler.state.lock().has_live_work() {
+                            continue;
+                        }
+                        listener
+                    }
+                };
                 debug!(
                     "[rknpu-scheduler] worker sleeping reason=idle_enqueue \
                      has_inflight={} has_work={}",
