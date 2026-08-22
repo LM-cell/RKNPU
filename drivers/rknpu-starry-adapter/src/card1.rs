@@ -1,4 +1,4 @@
-// Submit 延迟与 Worker 等待策略适配，最后修改日期：2026-08-19。
+// Submit 延迟与 Event/Waker Worker 适配，最后修改日期：2026-08-22。
 use alloc::string::ToString;
 use core::{
     any::Any,
@@ -17,7 +17,6 @@ use memory_addr::{MemoryAddr, PhysAddrRange};
 use rknpu::service::{
     RknpuCmd, RknpuDeviceAccess, RknpuSchedulerRuntime, RknpuService, RknpuServiceError,
     RknpuSubmitWaiter, RknpuUserMemory, RknpuWorkerListener, RknpuWorkerSignal,
-    RknpuWorkerWaitMode,
 };
 use starry_core::{
     futex::WaitQueue,
@@ -197,8 +196,8 @@ impl RknpuSchedulerRuntime for StarryPlatform {
         }
     }
 
-    /// 在 stalled 重试或 YieldPolling completion 轮询时让出当前 CPU。
-    /// 最后修改日期：2026-08-19。
+    /// 调度器 stalled 且没有可等待 IRQ 时让出当前 CPU。
+    /// 最后修改日期：2026-08-22。
     fn yield_now(&self) {
         #[cfg(target_arch = "aarch64")]
         axtask::yield_now();
@@ -207,13 +206,10 @@ impl RknpuSchedulerRuntime for StarryPlatform {
     }
 }
 
-// Worker 等待策略实验开关，最后修改日期：2026-08-19。
-// 原 yield 基线使用 YieldPolling；Event/Waker 版本改为 IrqEvent。
-const RKNPU_WORKER_WAIT_MODE: RknpuWorkerWaitMode = RknpuWorkerWaitMode::YieldPolling;
-
 lazy_static! {
+    // 最后修改日期：2026-08-22。服务固定使用 Event/Waker 等待 completion IRQ。
     static ref RKNPU_SERVICE: RknpuService<StarryPlatform> =
-        RknpuService::new_with_worker_wait_mode(StarryPlatform, RKNPU_WORKER_WAIT_MODE);
+        RknpuService::new(StarryPlatform);
 }
 
 /// 在注册 NPU IRQ 前初始化调度服务及其 Event。
@@ -226,8 +222,8 @@ pub(crate) fn init_rknpu_service() {
 
 /// 向调度服务报告 NPU completion IRQ。
 ///
-/// 最后修改日期：2026-08-19。Event/Waker 模式在这里唤醒 Worker；
-/// YieldPolling 模式不产生额外通知。该入口不获取调度器业务锁，也不直接派发任务。
+/// 最后修改日期：2026-08-22。IRQ 时间已经与底层 completion 状态一起发布；
+/// 该入口只唤醒 Event/Waker Worker，不获取调度器业务锁，也不直接派发任务。
 pub(crate) fn notify_rknpu_worker() {
     RKNPU_SERVICE.notify_irq_completion();
 }

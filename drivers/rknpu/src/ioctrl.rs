@@ -233,7 +233,7 @@ pub const RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY: usize = 262_144;
 /// Safety ceiling for explicit experiments: 40 MiB of 40-byte records.
 pub const RKNPU_WORKER_YIELD_TRACE_MAX_CAPACITY: usize = 1_048_576;
 
-/// 一条调度事件的原始记录，最后修改日期：2026-08-07。
+/// 一条调度事件的原始记录，最后修改日期：2026-08-19。
 ///
 /// 驱动只保存原始事实，不在内核中计算平均值或百分位。用户态通过
 /// `queue_task` 将 Enqueue、Dispatch、Complete 事件归并到同一个 Submit，
@@ -263,6 +263,16 @@ pub struct RknpuScheduleTraceRecord {
     pub dispatch_source: u32,
     /// 作出 Dispatch 决策时，该核心可执行的最高优先级 Ready 值。
     pub ready_priority: i32,
+    /// 对应核心进入 IRQ 处理函数的时间；仅 Complete 事件有效。
+    pub irq_timestamp_ns: u64,
+    /// Event 模式为 Worker 恢复时间，轮询模式为 Worker 首次观察完成的时间。
+    pub worker_resume_ns: u64,
+    /// Worker 调度循环编号，用于关联同一轮 Complete 与后续 Dispatch。
+    pub worker_cycle: u64,
+    /// 本轮 Worker 一次收割的 completion Core 数；仅 Complete 事件有效。
+    pub harvested_cores: u32,
+    /// 保留字段，用户态必须按 0 检查。
+    pub timing_reserved: u32,
 }
 
 /// 调度事件测试 ioctl 的输入输出参数，最后修改日期：2026-08-07。
@@ -342,7 +352,7 @@ pub const RKNPU_DISPATCH_SOURCE_NONE: u32 = 0;
 pub const RKNPU_DISPATCH_SOURCE_READY: u32 = 1;
 /// 当前 Task 来自已经处于 Running 状态的 Submit。
 pub const RKNPU_DISPATCH_SOURCE_RUNNING: u32 = 2;
-/// 6 线程、102 轮、每 Submit 10 Task 完整记录需要 12,852 条。
+/// 单次诊断窗口最多保存 16384 条调度事件。
 pub const RKNPU_SCHEDULE_TRACE_CAPACITY: usize = 16384;
 /// 事件不存在核心、lane 或 Task 下标时使用的无效值。
 pub const RKNPU_SCHEDULE_TRACE_NO_VALUE: u32 = u32::MAX;
@@ -479,7 +489,7 @@ mod tests {
         assert_eq!(core::mem::size_of::<RknpuSubmitTraceQuery>(), 24);
         assert_eq!(core::mem::size_of::<RknpuWorkerYieldTraceRecord>(), 40);
         assert_eq!(core::mem::size_of::<RknpuWorkerYieldTraceQuery>(), 32);
-        assert_eq!(core::mem::size_of::<RknpuScheduleTraceRecord>(), 56);
+        assert_eq!(core::mem::size_of::<RknpuScheduleTraceRecord>(), 88);
         assert_eq!(core::mem::size_of::<RknpuScheduleTraceQuery>(), 40);
         assert_eq!(core::mem::size_of::<RknpuSchedulerStateSnapshot>(), 40);
     }
@@ -549,8 +559,7 @@ mod tests {
         )
         .unwrap();
 
-        let int_status = tasks[0].int_status;  // 创建副本
-	assert_eq!(int_status, 0);
+        assert_eq!(tasks[0].int_status, 0);
         assert_eq!(
             npu.base[0]
                 .irq_status

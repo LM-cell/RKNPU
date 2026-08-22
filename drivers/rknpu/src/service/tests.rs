@@ -1,4 +1,4 @@
-// Submit 延迟、优先级与 IRQ 唤醒仿真测试，最后修改日期：2026-08-17。
+// Submit 延迟、优先级与 IRQ/Worker 分段仿真测试，最后修改日期：2026-08-19。
 use alloc::{vec, vec::Vec};
 use core::{
     ptr::NonNull,
@@ -116,7 +116,7 @@ struct MockPlatform {
     interrupt_wait: Arc<AtomicBool>,
     /// 每次读取增加 1000 ns 的假单调时钟，用于稳定验证时间戳先后关系。
     clock_ns: Arc<AtomicU64>,
-    /// 记录调度 worker 实际进入阻塞等待的次数，用于区分 IRQ 唤醒与 yield 轮询。
+    /// 记录调度 worker 实际进入 Event 阻塞等待的次数，用于确认没有忙轮询。
     worker_wait_count: Arc<AtomicUsize>,
 }
 
@@ -160,11 +160,17 @@ impl MockPlatform {
     ///
     /// 这一步相当于测试主动制造一次硬件完成状态；随后由调度 worker 读取状态，
     /// 将完成事件匹配回对应的 Submit 和 Task。
-    fn publish_completion_status(&self, core_slot: usize, irq_status: u32) {
+    fn publish_completion_status(&self, core_slot: usize, irq_status: u32) -> u64 {
+        let irq_time_ns = self.monotonic_time_ns();
         let dev = self.device.npu.lock().unwrap();
+        // 仿真遵守真实 IRQ 的发布顺序：先时间戳，后 completion 状态。
+        dev.base[core_slot]
+            .irq_timestamp_ns
+            .store(irq_time_ns, Ordering::Release);
         dev.base[core_slot]
             .irq_status
             .store(irq_status, Ordering::Release);
+        irq_time_ns
     }
 
     /// 模拟完整 completion IRQ：先发布状态，再通过正式 Service 入口唤醒 worker。
@@ -372,8 +378,8 @@ impl RknpuSchedulerRuntime for MockPlatform {
         thread::spawn(f);
     }
 
-    /// 仿真 stalled 分支时让出宿主线程；正常 completion 仍由 Mock IRQ 唤醒。
-    /// 最后修改日期：2026-08-17。
+    /// 仿真 stalled 分支时让出宿主线程；正常 completion 只由 Mock IRQ 唤醒。
+    /// 最后修改日期：2026-08-22。
     fn yield_now(&self) {
         thread::yield_now();
     }
@@ -620,19 +626,122 @@ fn irq_notification_wakes_blocked_worker() {
 }
 
 #[test]
-fn yield_polling_worker_completes_without_irq_wake() {
-    // 最后修改日期：2026-08-19。显式选择 YieldPolling 后只发布硬件完成状态，
-    // 不发送 Event 通知；Worker 必须通过 yield 轮询回收 Task 并结束 Submit。
+fn schedule_trace_links_irq_resume_and_next_dispatch() {
+    // 最后修改日期：2026-08-19。单核两 Task 保证第一次 completion 后仍有
+    // Ready Task；同一 Worker 循环必须先收割 Task0，再派发 Task1。
     let platform = MockPlatform::new();
-    let service = RknpuService::new_with_worker_wait_mode(
-        platform.clone(),
-        super::RknpuWorkerWaitMode::YieldPolling,
-    );
-    let submitter = spawn_tagged_submit(service.clone(), 1, 0, 50_000, 0x1, vec![1]);
+    let service = RknpuService::new(platform.clone());
+    configure_schedule_trace(&service);
+    let submitter = spawn_tagged_submit(service.clone(), 2, 0, 100, 0x1, vec![2]);
 
-    wait_until(|| service.has_inflight_dispatches());
-    assert_eq!(platform.worker_wait_count(), 0);
-    platform.publish_completion_status(0, 0x100);
+    wait_until(|| has_schedule_event(&service, RKNPU_SCHEDULE_EVENT_DISPATCH, 100));
+    let first_core = dispatched_core(&service, 100);
+    let first_irq_ns = platform.publish_completion_status(first_core, 0x100);
+    service.notify_irq_completion();
+
+    wait_until(|| has_schedule_event(&service, RKNPU_SCHEDULE_EVENT_DISPATCH, 101));
+    let second_core = dispatched_core(&service, 101);
+    platform.publish_completion(&service, second_core, 0x100);
+    join_submit(submitter);
+
+    let records = read_schedule_trace(&service);
+    let first_complete = records
+        .iter()
+        .find(|record| {
+            record.event_type == RKNPU_SCHEDULE_EVENT_COMPLETE && record.op_idx == 100
+        })
+        .expect("first complete event not found");
+    let second_dispatch = records
+        .iter()
+        .find(|record| {
+            record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH && record.op_idx == 101
+        })
+        .expect("second dispatch event not found");
+
+    assert_eq!(first_complete.irq_timestamp_ns, first_irq_ns);
+    assert!(first_complete.worker_resume_ns >= first_complete.irq_timestamp_ns);
+    assert_eq!(first_complete.harvested_cores, 1);
+    assert_ne!(first_complete.worker_cycle, 0);
+    assert_eq!(first_complete.worker_cycle, second_dispatch.worker_cycle);
+    assert!(second_dispatch.timestamp_ns >= first_complete.worker_resume_ns);
+}
+
+#[test]
+fn schedule_trace_counts_three_cores_harvested_by_one_worker_cycle() {
+    // 最后修改日期：2026-08-19。先让三个核心的 completion 同时可见，再只
+    // 通知一次 Worker；本轮必须收割三个核心，并立即派发每条 lane 的下一 Task。
+    let platform = MockPlatform::new();
+    let service = RknpuService::new(platform.clone());
+    configure_schedule_trace(&service);
+    let submitter = spawn_tagged_submit(
+        service.clone(),
+        6,
+        0,
+        200,
+        0x7,
+        vec![2, 2, 2],
+    );
+
+    wait_until(|| {
+        read_schedule_trace(&service)
+            .iter()
+            .filter(|record| record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH)
+            .count()
+            == 3
+    });
+    let first_dispatches = read_schedule_trace(&service)
+        .into_iter()
+        .filter(|record| record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH)
+        .collect::<Vec<_>>();
+    for dispatch in &first_dispatches {
+        platform.publish_completion_status(dispatch.core_slot as usize, 0x100);
+    }
+    service.notify_irq_completion();
+
+    wait_until(|| {
+        read_schedule_trace(&service)
+            .iter()
+            .filter(|record| record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH)
+            .count()
+            == 6
+    });
+    let records_after_refill = read_schedule_trace(&service);
+    let first_cycle = records_after_refill
+        .iter()
+        .find(|record| {
+            record.event_type == RKNPU_SCHEDULE_EVENT_COMPLETE &&
+                record.op_idx == first_dispatches[0].op_idx
+        })
+        .expect("first completion not found")
+        .worker_cycle;
+    let first_completions = records_after_refill
+        .iter()
+        .filter(|record| {
+            record.event_type == RKNPU_SCHEDULE_EVENT_COMPLETE &&
+                record.worker_cycle == first_cycle
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(first_completions.len(), 3);
+    assert!(first_completions
+        .iter()
+        .all(|record| record.harvested_cores == 3));
+    assert!(records_after_refill.iter().any(|record| {
+        record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH &&
+            record.worker_cycle == first_cycle
+    }));
+
+    let second_dispatches = records_after_refill
+        .iter()
+        .filter(|record| {
+            record.event_type == RKNPU_SCHEDULE_EVENT_DISPATCH &&
+                record.worker_cycle == first_cycle
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(second_dispatches.len(), 3);
+    for dispatch in second_dispatches {
+        platform.publish_completion_status(dispatch.core_slot as usize, 0x100);
+    }
+    service.notify_irq_completion();
     join_submit(submitter);
 }
 

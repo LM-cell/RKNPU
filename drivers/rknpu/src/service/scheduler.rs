@@ -1,4 +1,4 @@
-// Submit 延迟、调度事件与 Worker 等待策略，最后修改日期：2026-08-19。
+// Submit 延迟、调度事件与 Event/Waker Worker，最后修改日期：2026-08-22。
 use alloc::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
@@ -29,7 +29,7 @@ use crate::{
 
 use super::{
     RknpuPlatform, RknpuService, RknpuServiceError, RknpuSubmitWaiter, RknpuWorkerListener,
-    RknpuWorkerSignal, RknpuWorkerWaitMode,
+    RknpuWorkerSignal,
 };
 
 /// Monotonic task-id generator for queued blocking submits.
@@ -428,6 +428,8 @@ pub(super) struct RknpuScheduler<P: RknpuPlatform> {
     trace: Mutex<SubmitTraceBuffer>,
     /// 默认关闭的调度事件记录；独立锁保证记录读取不长期占用调度状态锁。
     schedule_trace: Mutex<ScheduleTraceBuffer>,
+    /// 调度 trace 的无锁开关，IRQ 和 Worker 热路径只读取该原子值。
+    schedule_trace_enabled: AtomicBool,
     /// 兼容旧测试 ioctl 的 yield 记录缓冲区；IRQ 阻塞等待路径不再写入新记录。
     worker_yield_trace: Mutex<WorkerYieldTraceBuffer>,
     /// Fast disabled-path check so normal scheduling does not take the trace lock.
@@ -463,8 +465,8 @@ impl ScheduleTraceBuffer {
 
     /// 为一次新实验创建干净缓冲区。
     ///
-    /// 仅在 `event_mask != 0` 时分配 16,384 条记录空间，普通启动路径不会
-    /// 为关闭的测试功能占用约 896 KiB 内存。
+    /// 最后修改日期：2026-08-19。仅在 `event_mask != 0` 时分配 16,384 条
+    /// 记录空间，普通启动路径不为关闭的测试功能预留记录内存。
     fn configured(event_mask: u32) -> Self {
         Self {
             records: if event_mask == 0 {
@@ -584,6 +586,7 @@ impl<P: RknpuPlatform> RknpuScheduler<P> {
             state: Mutex::new(NpuSchedulerState::new()),
             trace: Mutex::new(SubmitTraceBuffer::new()),
             schedule_trace: Mutex::new(ScheduleTraceBuffer::new()),
+            schedule_trace_enabled: AtomicBool::new(false),
             worker_yield_trace: Mutex::new(WorkerYieldTraceBuffer::new()),
             worker_yield_trace_enabled: AtomicBool::new(false),
             kick: platform.new_worker_signal(),
@@ -692,7 +695,19 @@ impl<P: RknpuPlatform> RknpuService<P> {
             let mut trace = self.inner.scheduler.schedule_trace.lock();
             mem::replace(&mut *trace, replacement)
         };
+        self.inner
+            .scheduler
+            .schedule_trace_enabled
+            .store(event_mask != 0, Ordering::Release);
         drop(previous);
+    }
+
+    /// 判断调度时间记录是否开启，不获取 trace 锁。
+    fn schedule_trace_enabled(&self) -> bool {
+        self.inner
+            .scheduler
+            .schedule_trace_enabled
+            .load(Ordering::Acquire)
     }
 
     /// 复制调度事件到内核快照，释放 trace 锁后再向用户空间返回。
@@ -720,7 +735,12 @@ impl<P: RknpuPlatform> RknpuService<P> {
     ///
     /// 调用处不得持有调度器状态锁或设备锁，保持锁顺序为“业务状态处理
     /// 完成后再记录”，避免 trace 锁与调度锁、设备锁构成环路。
+    /// 最后修改日期：2026-08-19。
     fn record_schedule_event(&self, record: RknpuScheduleTraceRecord) {
+        // 正式性能窗口未开启 trace 时，不进入测试缓冲区锁路径。
+        if !self.schedule_trace_enabled() {
+            return;
+        }
         self.inner.scheduler.schedule_trace.lock().push(record);
     }
 
@@ -803,15 +823,12 @@ impl<P: RknpuPlatform> RknpuService<P> {
         Ok(task_id)
     }
 
-    /// 通知调度 worker 已有新的 NPU completion 状态可回收。
+    /// 通知 Event/Waker 调度 Worker 已有新的 NPU completion 状态可回收。
     ///
-    /// 最后修改日期：2026-08-19。Event/Waker 模式转发到 IRQ-safe 唤醒对象；
-    /// YieldPolling 模式由 Worker 轮询状态，不产生额外 Event 通知。两种模式都
+    /// 最后修改日期：2026-08-22。IRQ 路径只向预先创建的唤醒对象发送通知，
     /// 不获取调度状态锁、不操作 Ready/Running 队列，也不直接派发任务。
     pub fn notify_irq_completion(&self) {
-        if self.inner.worker_wait_mode == RknpuWorkerWaitMode::IrqEvent {
-            self.inner.scheduler.kick.notify_one();
-        }
+        self.inner.scheduler.kick.notify_one();
     }
 
     /// Block the caller until the specified submit becomes terminal.
@@ -936,8 +953,15 @@ impl<P: RknpuPlatform> RknpuService<P> {
         self.wake_terminal_tasks(terminal_ids, false);
     }
 
-    /// Harvest completed cores, update task shadows, and wake terminal submits.
-    fn harvest_completed_cores(&self) -> bool {
+    /// 收割本轮已经发布的 Core completion，并返回本次收割的核心数量。
+    ///
+    /// 最后修改日期：2026-08-19。`worker_cycle` 和 `worker_resume_time_ns`
+    /// 只写入调度 trace，不参与任务状态转换或核心回收。
+    fn harvest_completed_cores(
+        &self,
+        worker_cycle: u64,
+        worker_resume_time_ns: u64,
+    ) -> usize {
         let completions =
             match self.with_npu_driver(|rknpu_dev| Ok(rknpu_dev.harvest_completed_dispatches())) {
                 Ok(completions) => completions,
@@ -946,13 +970,23 @@ impl<P: RknpuPlatform> RknpuService<P> {
                         "[rknpu-scheduler] failed to harvest completed cores: {:?}",
                         err
                     );
-                    return false;
+                    return 0;
                 }
             };
 
         if completions.is_empty() {
-            return false;
+            return 0;
         }
+        let harvested_cores = completions.len();
+        // 正常唤醒在进入 Worker 循环时打点；若 IRQ 恰好在检查后到达，
+        // 则在确认存在 completion 后补取一次 Worker 首次观察时间。
+        let worker_resume_time_ns = if worker_resume_time_ns != 0 {
+            worker_resume_time_ns
+        } else if self.schedule_trace_enabled() {
+            self.inner.platform.monotonic_time_ns()
+        } else {
+            0
+        };
 
         // 先在调度锁内更新完成状态并构造事件，释放调度锁后统一写 trace。
         let mut schedule_events = Vec::with_capacity(completions.len());
@@ -963,6 +997,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
                 // 当前核心完成，用于判断整个 Submit 的 t3。
                 let completion_time_ns = self.inner.platform.monotonic_time_ns();
                 let core_slot = completion.core_slot as usize;
+                let irq_timestamp_ns = completion.irq_timestamp_ns;
                 let Some(binding) = state.core_binding.remove(&core_slot) else {
                     debug!(
                         "[rknpu-scheduler] harvested completion on core={} without core binding \
@@ -1019,6 +1054,10 @@ impl<P: RknpuPlatform> RknpuService<P> {
                     task_index: binding.task_index,
                     core_slot: core_slot as u32,
                     lane_slot: binding.lane_slot as u32,
+                    irq_timestamp_ns,
+                    worker_resume_ns: worker_resume_time_ns,
+                    worker_cycle,
+                    harvested_cores: harvested_cores as u32,
                     ..RknpuScheduleTraceRecord::default()
                 });
 
@@ -1051,11 +1090,11 @@ impl<P: RknpuPlatform> RknpuService<P> {
         }
 
         self.wake_terminal_tasks(terminal_ids, true);
-        true
+        harvested_cores
     }
 
     /// Dispatch queued work onto idle cores until no more immediate dispatch fits.
-    fn dispatch_idle_cores(&self) -> bool {
+    fn dispatch_idle_cores(&self, worker_cycle: u64) -> bool {
         let mut dispatched = false;
         let mut confirmed_submit_ids = BTreeSet::new();
         loop {
@@ -1127,6 +1166,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
                         lane_slot: setup.binding.lane_slot as u32,
                         dispatch_source: setup.dispatch_source,
                         ready_priority: setup.ready_priority,
+                        worker_cycle,
                         ..RknpuScheduleTraceRecord::default()
                     });
                     self.fail_dispatch(setup.core_slot, setup.binding, err.to_driver_error());
@@ -1169,6 +1209,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
                         lane_slot: setup.binding.lane_slot as u32,
                         dispatch_source: setup.dispatch_source,
                         ready_priority: setup.ready_priority,
+                        worker_cycle,
                         ..RknpuScheduleTraceRecord::default()
                     });
                     debug!(
@@ -1196,6 +1237,7 @@ impl<P: RknpuPlatform> RknpuService<P> {
                         lane_slot: setup.binding.lane_slot as u32,
                         dispatch_source: setup.dispatch_source,
                         ready_priority: setup.ready_priority,
+                        worker_cycle,
                         ..RknpuScheduleTraceRecord::default()
                     });
                     self.fail_dispatch(setup.core_slot, setup.binding, err.to_driver_error());
@@ -1224,24 +1266,29 @@ impl<P: RknpuPlatform> RknpuService<P> {
         }
     }
 
-    /// 单 worker 调度循环：回收完成任务、派发 Ready 任务，再按三种状态等待或重试。
+    /// Event/Waker 单 Worker 主循环：回收完成任务、派发 Ready 任务，再等待或重试。
     ///
-    /// 最后修改日期：2026-08-19。inflight completion 可选择 Event/Waker 或
-    /// `yield_now()` 轮询；无 live work 时始终等待新 Submit，避免空转。
+    /// 最后修改日期：2026-08-22。in-flight completion 只通过 IRQ Event 唤醒；
+    /// stalled 状态没有可等待的 completion IRQ，仍通过 `yield_now()` 重试。
     fn worker_main(self) {
         debug!("[rknpu-scheduler] worker thread started");
         let mut stalled_yields = 0u32;
+        let mut worker_cycle = 0u64;
+        let mut pending_worker_resume_ns = 0u64;
         loop {
-            // Event/Waker 模式必须在检查 completion 前注册监听，避免 IRQ 落在
-            // “检查状态”和“开始等待”之间。YieldPolling 模式不创建无用监听器。
-            let listener = match self.inner.worker_wait_mode {
-                RknpuWorkerWaitMode::IrqEvent => Some(self.inner.scheduler.kick.listen()),
-                RknpuWorkerWaitMode::YieldPolling => None,
-            };
-            let harvested = self.harvest_completed_cores();
-            let dispatched = self.dispatch_idle_cores();
+            worker_cycle = worker_cycle.wrapping_add(1);
+            let worker_resume_time_ns = pending_worker_resume_ns;
+            pending_worker_resume_ns = 0;
+            // 必须在检查 completion 前注册监听，避免 IRQ 落在“检查状态”和
+            // “开始等待”之间。提前注册的 Listener 在本轮有进展时直接丢弃。
+            let listener = self.inner.scheduler.kick.listen();
+            let harvested = self.harvest_completed_cores(
+                worker_cycle,
+                worker_resume_time_ns,
+            );
+            let dispatched = self.dispatch_idle_cores(worker_cycle);
 
-            if harvested || dispatched {
+            if harvested != 0 || dispatched {
                 stalled_yields = 0;
                 continue;
             }
@@ -1251,39 +1298,23 @@ impl<P: RknpuPlatform> RknpuService<P> {
                 (state.has_inflight(), state.has_live_work())
             };
             if has_inflight {
-                // 最后修改日期：2026-08-19。两种版本只在这个等待点分流，
-                // completion 回收和后续 refill 仍走完全相同的调度流程。
-                match self.inner.worker_wait_mode {
-                    RknpuWorkerWaitMode::IrqEvent => {
-                        debug!(
-                            "[rknpu-scheduler] worker sleeping reason=inflight_completion \
-                             has_inflight={} has_work={}",
-                            has_inflight, has_work
-                        );
-                        // IrqEvent 模式在本轮入口必定已经建立 listener。
-                        listener.unwrap().wait();
-                    }
-                    RknpuWorkerWaitMode::YieldPolling => {
-                        // 轮询热路径不打印日志，避免日志级别判断影响基线性能。
-                        self.inner.platform.yield_now();
-                    }
+                debug!(
+                    "[rknpu-scheduler] worker sleeping reason=inflight_completion \
+                     has_inflight={} has_work={}",
+                    has_inflight, has_work
+                );
+                // 最后修改日期：2026-08-22。正常硬件执行期间只等待 completion IRQ。
+                listener.wait();
+                if self.schedule_trace_enabled() {
+                    // wait 返回后的第一个动作即为 Worker resume 打点。
+                    pending_worker_resume_ns = self.inner.platform.monotonic_time_ns();
                 }
                 continue;
             }
 
             if !has_work {
-                // 当前没有 Submit，等待下一次 enqueue 通知。YieldPolling 模式
-                // 此时才注册监听并复查状态，覆盖“先入队、后监听”的竞争窗口。
-                let listener = match listener {
-                    Some(listener) => listener,
-                    None => {
-                        let listener = self.inner.scheduler.kick.listen();
-                        if self.inner.scheduler.state.lock().has_live_work() {
-                            continue;
-                        }
-                        listener
-                    }
-                };
+                // 最后修改日期：2026-08-22。Listener 已在状态检查前注册，
+                // 覆盖“先入队、后等待”的竞争窗口。
                 debug!(
                     "[rknpu-scheduler] worker sleeping reason=idle_enqueue \
                      has_inflight={} has_work={}",

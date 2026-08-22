@@ -349,7 +349,7 @@ impl Rknpu {
         for core in &self.base {
             core.clean_interrupts();
             core.drain_pending_interrupts();
-            core.irq_status.store(0, Ordering::Release);
+            core.clear_completion_shadow();
         }
         Ok(())
     }
@@ -480,10 +480,10 @@ impl Rknpu {
         self.base[0].submit(&self.data, self.wait_fn, job)
     }
 
-    /// Harvests every per-core completion currently published by IRQ handlers.
+    /// 收割各 NPU 核心当前已经由 IRQ 发布的 completion。
     ///
-    /// The scheduler calls this from normal task context. Each returned record
-    /// clears the corresponding active per-core dispatch slot.
+    /// 最后修改日期：2026-08-19。调度器只在普通 Worker 上下文调用；读取
+    /// completion 状态后，同时取走与该状态对应的 IRQ 入口时间。
     pub fn harvest_completed_dispatches(&mut self) -> Vec<CoreCompletion> {
         let mut completed = Vec::new();
 
@@ -494,6 +494,11 @@ impl Rknpu {
             if irq_status == 0 {
                 continue;
             }
+            // irq_status 的 Acquire 与 IRQ 中的 Release 配对，确保随后读取到
+            // 同一次 completion 在状态发布前写入的时间戳。
+            let irq_timestamp_ns = self.base[core_slot]
+                .irq_timestamp_ns
+                .swap(0, Ordering::AcqRel);
             debug!(
                 "[NPU] harvest_completed_dispatches core{} irq_status={:#x} observed={:#x}",
                 core_slot, irq_status, irq_status
@@ -502,6 +507,7 @@ impl Rknpu {
             completed.push(CoreCompletion {
                 core_slot: core_slot as u8,
                 observed_irq_status: irq_status,
+                irq_timestamp_ns,
             });
         }
 
@@ -525,10 +531,10 @@ impl Rknpu {
     }
 }
 
-/// Lightweight interrupt handler for one NPU core.
+/// 一个 NPU 核心对应的轻量中断处理对象。
 ///
-/// Cloned from [`Rknpu`] and safe to call from IRQ context. It only reads and
-/// clears interrupt state; it does not allocate memory or block.
+/// 从 [`Rknpu`] 克隆后供 IRQ 上下文调用，只读取、清除并发布中断状态，
+/// 不分配内存，也不阻塞。
 pub struct RknpuIrqHandler(RknpuCore);
 
 unsafe impl Send for RknpuIrqHandler {}
@@ -537,10 +543,18 @@ unsafe impl Sync for RknpuIrqHandler {}
 impl RknpuIrqHandler {
     /// 读取、清除并发布中断状态，返回归一化后的完成位。
     ///
-    /// 最后修改日期：2026-08-17。IRQ 路径只转发到底层原子状态发布逻辑，
-    /// 不在这里记录日志、分配内存或进入调度器。
+    /// 最后修改日期：2026-08-19。保留原有无参数接口，供不需要 IRQ 分段
+    /// 计时的调用方继续使用。
     pub fn handle(&self) -> u32 {
         self.0.handle_interrupt()
+    }
+
+    /// 读取、清除并发布中断状态及 IRQ 入口时间，返回归一化后的完成位。
+    ///
+    /// 最后修改日期：2026-08-19。IRQ 路径只转发到底层原子状态发布逻辑，
+    /// 不在这里记录日志、分配内存或进入调度器。
+    pub fn handle_at(&self, irq_time_ns: u64) -> u32 {
+        self.0.handle_interrupt_at(irq_time_ns)
     }
 }
 
@@ -590,6 +604,9 @@ mod tests {
     #[test]
     fn harvest_completed_dispatches_returns_raw_core_status() {
         let mut npu = build_test_npu(1);
+        npu.base[0]
+            .irq_timestamp_ns
+            .store(123_456, Ordering::Release);
         npu.base[0].irq_status.store(0x300, Ordering::Release);
 
         let completed = npu.harvest_completed_dispatches();
@@ -597,7 +614,9 @@ mod tests {
         assert_eq!(completed.len(), 1);
         assert_eq!(completed[0].core_slot, 0);
         assert_eq!(completed[0].observed_irq_status, 0x300);
+        assert_eq!(completed[0].irq_timestamp_ns, 123_456);
         assert_eq!(npu.base[0].irq_status.load(Ordering::Acquire), 0);
+        assert_eq!(npu.base[0].irq_timestamp_ns.load(Ordering::Acquire), 0);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-// NPU IRQ 状态发布与 worker 唤醒，最后修改日期：2026-08-17。
+// NPU IRQ 状态、到达时间与 Worker 唤醒，最后修改日期：2026-08-19。
 use crate::{RknpuIrqHandler, card1::notify_rknpu_worker};
 use core::cell::UnsafeCell;
 
@@ -27,12 +27,14 @@ pub const NPU_IRQ_FNS: [fn(usize); 3] = [
 /// IRQ 中只调用底层 `handle()` 读取、清除并发布状态，再发送 Event 通知；
 /// Task 回收、Ready 队列操作和后续派发全部由被唤醒的 worker 完成。
 fn handle_npu_irq(core_slot: usize) {
+    // 进入 IRQ 处理函数后立即读取单调时钟；该读取不分配内存、不获取调度锁。
+    let irq_time_ns = axhal::time::monotonic_time_nanos() as u64;
     let status = unsafe {
         // 安全性：probe 在注册 IRQ 前写入对应槽位，注册后不再修改该槽位。
         // IRQ 处理器只通过共享引用调用内部原子状态发布逻辑。
         (&*NPU_IRQ_HANDLERS[core_slot].0.get())
             .as_ref()
-            .map_or(0, RknpuIrqHandler::handle)
+            .map_or(0, |handler| handler.handle_at(irq_time_ns))
     };
     if status != 0 {
         notify_rknpu_worker();

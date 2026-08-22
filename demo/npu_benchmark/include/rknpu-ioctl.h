@@ -360,7 +360,7 @@ struct rknpu_worker_yield_trace_query {
         __u64 records_address;
 };
 
-/* 调度事件与资源状态测试接口，最后修改日期：2026-08-07。 */
+/* 调度事件与资源状态测试接口，最后修改日期：2026-08-19。 */
 struct rknpu_schedule_trace_record {
         /* 驱动按实际写入顺序分配的连续事件序号。 */
         __u64 sequence;
@@ -384,6 +384,16 @@ struct rknpu_schedule_trace_record {
         __u32 dispatch_source;
         /* 作出 Dispatch 决策时，该核心可执行的最高 Ready 优先级。 */
         __s32 ready_priority;
+        /* 对应核心进入 IRQ 处理函数的时间；仅 COMPLETE 有效。 */
+        __u64 irq_timestamp_ns;
+        /* Event 模式为 Worker 恢复时间；轮询模式为首次观察完成的时间。 */
+        __u64 worker_resume_ns;
+        /* Worker 循环编号，用于关联同轮 COMPLETE 与后续 DISPATCH。 */
+        __u64 worker_cycle;
+        /* 本轮 Worker 一次收割的 completion Core 数。 */
+        __u32 harvested_cores;
+        /* ABI 保留字段，驱动固定写 0。 */
+        __u32 timing_reserved;
 };
 
 struct rknpu_schedule_trace_query {

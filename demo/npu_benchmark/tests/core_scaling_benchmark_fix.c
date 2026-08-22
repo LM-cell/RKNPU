@@ -1,3 +1,4 @@
+/* RKNPU 多核扩展与调度分段测试，最后修改日期：2026-08-19。 */
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
@@ -23,6 +24,7 @@
 #define DMA_SLICE_ALIGN 64U
 #define DEFAULT_TIMEOUT_MS 6000U
 #define DEFAULT_MEASURE_ROUNDS 100U
+#define DEFAULT_DISPATCH_TRACE_ROUNDS 5U
 #define YIELD_GAP_HISTOGRAM_BUCKET_NS 100000ULL
 #define YIELD_GAP_HISTOGRAM_BUCKET_COUNT 1000U
 #define STARRYOS_USER_PAGE_BYTES 4096U
@@ -33,6 +35,8 @@ _Static_assert(sizeof(struct rknpu_worker_yield_trace_record) == 40,
                "worker yield trace record ABI size mismatch");
 _Static_assert(sizeof(struct rknpu_worker_yield_trace_query) == 32,
                "worker yield trace query ABI size mismatch");
+_Static_assert(sizeof(struct rknpu_schedule_trace_record) == 88,
+               "schedule trace ABI size mismatch");
 
 typedef enum {
     OPERANDS_SHARED = 0,
@@ -136,6 +140,15 @@ typedef struct {
     uint32_t yield_trace_count;
     int yield_trace_collected;
 
+    /*
+     * Dispatch 分段诊断在正式性能结束后单独采集，避免事件记录改变正式指标。
+     * 最后修改日期：2026-08-19。
+     */
+    struct rknpu_schedule_trace_record *dispatch_trace_records;
+    uint32_t dispatch_trace_count;
+    uint32_t dispatch_trace_submits;
+    int dispatch_trace_collected;
+
     double avg_submit_us;
     double avg_submit_ms;
     double avg_task_us;
@@ -159,6 +172,9 @@ typedef struct {
     int collect_yield_trace;
     uint32_t yield_trace_capacity;
     int has_yield_trace_capacity;
+    int collect_dispatch_trace;
+    uint32_t dispatch_trace_rounds;
+    int has_dispatch_trace_rounds;
 } cli_options_t;
 
 typedef struct {
@@ -181,7 +197,7 @@ static const benchmark_scenario_t k_scenarios[] = {
         .k = 32,
         .n = 16,
         .shared_tasks = 48,
-        .unique_tasks = 96,
+        .unique_tasks = 0,
         .warmup_rounds = 2,
         .measure_rounds = DEFAULT_MEASURE_ROUNDS,
     },
@@ -194,7 +210,7 @@ static const benchmark_scenario_t k_scenarios[] = {
         .k = 512,
         .n = 512,
         .shared_tasks = 48,
-        .unique_tasks = 12,
+        .unique_tasks = 0,
         .warmup_rounds = 2,
         .measure_rounds = DEFAULT_MEASURE_ROUNDS,
     },
@@ -207,7 +223,7 @@ static const benchmark_scenario_t k_scenarios[] = {
         .k = 1024,
         .n = 1024,
         .shared_tasks = 48,
-        .unique_tasks = 4,
+        .unique_tasks = 0,
         .warmup_rounds = 2,
         .measure_rounds = DEFAULT_MEASURE_ROUNDS,
     },
@@ -341,6 +357,43 @@ static int read_worker_yield_trace(
                 "failed to read Worker yield trace: errno=%d (%s)\n",
                 errno,
                 strerror(errno));
+        return -1;
+    }
+    *query_out = query;
+    return 0;
+}
+
+/* 最后修改日期：2026-08-19。清空并开启调度事件；掩码为 0 时关闭。 */
+static int configure_schedule_trace(int fd, uint32_t event_mask) {
+    struct rknpu_schedule_trace_query query;
+
+    memset(&query, 0, sizeof(query));
+    query.operation = RKNPU_SCHEDULE_TRACE_CONFIG_RESET;
+    query.event_mask = event_mask;
+    if (ioctl(fd, DRM_IOCTL_RKNPU_SCHEDULE_TRACE, &query) < 0) {
+        fprintf(stderr, "failed to configure schedule trace: errno=%d (%s)\n",
+                errno, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+/* 最后修改日期：2026-08-19。测试结束后一次读取原始记录，循环内不打印。 */
+static int read_schedule_trace(
+    int fd,
+    struct rknpu_schedule_trace_record *records,
+    uint32_t capacity,
+    struct rknpu_schedule_trace_query *query_out
+) {
+    struct rknpu_schedule_trace_query query;
+
+    memset(&query, 0, sizeof(query));
+    query.operation = RKNPU_SCHEDULE_TRACE_READ;
+    query.capacity = capacity;
+    query.records_address = (uint64_t)(uintptr_t)records;
+    if (ioctl(fd, DRM_IOCTL_RKNPU_SCHEDULE_TRACE, &query) < 0) {
+        fprintf(stderr, "failed to read schedule trace: errno=%d (%s)\n",
+                errno, strerror(errno));
         return -1;
     }
     *query_out = query;
@@ -839,6 +892,8 @@ static int run_benchmark_case(
     uint32_t measure_rounds,
     int collect_yield_trace,
     uint32_t yield_trace_capacity,
+    int collect_dispatch_trace,
+    uint32_t dispatch_trace_rounds,
     benchmark_result_t *result
 ) {
     batch_resources_t resources;
@@ -849,6 +904,7 @@ static int run_benchmark_case(
     uint64_t max_submit_us = 0;
     int descriptor_status = 0;
     int yield_trace_active = 0;
+    int schedule_trace_active = 0;
 
     memset(result, 0, sizeof(*result));
 
@@ -1069,6 +1125,92 @@ static int run_benchmark_case(
         result->yield_trace_collected = 1;
     }
 
+    if (collect_dispatch_trace) {
+        struct rknpu_schedule_trace_query schedule_query;
+        size_t records_per_submit = 1U + 2U * (size_t)task_count;
+        size_t expected_records;
+        int trace_status = 0;
+
+        /* 容量按记录条数校验，避免轮数乘法溢出或内核 trace 截断。 */
+        if (dispatch_trace_rounds == 0U ||
+            dispatch_trace_rounds >
+                RKNPU_SCHEDULE_TRACE_CAPACITY / records_per_submit) {
+            fprintf(stderr,
+                    "dispatch trace exceeds capacity: rounds=%u records/submit=%zu capacity=%u\n",
+                    dispatch_trace_rounds, records_per_submit,
+                    RKNPU_SCHEDULE_TRACE_CAPACITY);
+            trace_status = -1;
+            expected_records = 0;
+        } else {
+            expected_records = (size_t)dispatch_trace_rounds * records_per_submit;
+            result->dispatch_trace_records = calloc(
+                expected_records, sizeof(*result->dispatch_trace_records));
+            if (result->dispatch_trace_records == NULL) {
+                trace_status = -1;
+            }
+        }
+
+        if (trace_status == 0) {
+            prefault_writable_user_buffer(
+                result->dispatch_trace_records,
+                expected_records * sizeof(*result->dispatch_trace_records));
+            if (configure_schedule_trace(fd, RKNPU_SCHEDULE_EVENT_ALL) != 0) {
+                trace_status = -1;
+            } else {
+                schedule_trace_active = 1;
+            }
+        }
+
+        /* 诊断窗口与正式 measured 窗口分离，原性能指标不包含逐 Task trace。 */
+        for (uint32_t round = 0;
+             trace_status == 0 && round < dispatch_trace_rounds;
+             round++) {
+            if (run_submit_round(
+                    fd, &resources, &submit_template, &submit_elapsed_us,
+                    round == 0
+                ) != 0) {
+                trace_status = -1;
+            }
+        }
+
+        memset(&schedule_query, 0, sizeof(schedule_query));
+        if (trace_status == 0 &&
+            read_schedule_trace(
+                fd, result->dispatch_trace_records,
+                (uint32_t)expected_records, &schedule_query
+            ) != 0) {
+            trace_status = -1;
+        }
+        if (schedule_trace_active) {
+            if (configure_schedule_trace(fd, 0) != 0) {
+                trace_status = -1;
+            }
+            schedule_trace_active = 0;
+        }
+
+        if (trace_status != 0 || schedule_query.overflowed != 0U ||
+            schedule_query.count != expected_records) {
+            fprintf(stderr,
+                    "invalid dispatch trace: count=%u expected=%zu overflow=%u\n",
+                    schedule_query.count, expected_records,
+                    schedule_query.overflowed);
+            free_batch_resources(fd, &resources);
+            free(result->submit_trace_records);
+            free(result->yield_trace_records);
+            free(result->dispatch_trace_records);
+            result->submit_trace_records = NULL;
+            result->yield_trace_records = NULL;
+            result->dispatch_trace_records = NULL;
+            free(result->submit_samples_us);
+            result->submit_samples_us = NULL;
+            return -1;
+        }
+
+        result->dispatch_trace_count = schedule_query.count;
+        result->dispatch_trace_submits = dispatch_trace_rounds;
+        result->dispatch_trace_collected = 1;
+    }
+
     if (benchmark_compute_latency_stats(
             result->submit_samples_us,
             measure_rounds,
@@ -1078,8 +1220,10 @@ static int run_benchmark_case(
         free_batch_resources(fd, &resources);
         free(result->submit_trace_records);
         free(result->yield_trace_records);
+        free(result->dispatch_trace_records);
         result->submit_trace_records = NULL;
         result->yield_trace_records = NULL;
+        result->dispatch_trace_records = NULL;
         free(result->submit_samples_us);
         result->submit_samples_us = NULL;
         return -1;
@@ -1182,6 +1326,203 @@ static void print_case_metrics(const benchmark_result_t *result) {
     printf("  GFLOP / sec     : %8.3f\n", result->gflops_per_sec);
     printf("  jitter span     : %8.2f %%\n", result->jitter_pct);
     print_latency_samples(result);
+}
+
+/* 在同一 queue_task/task_index/core 上查找唯一的成功 Dispatch。 */
+static const struct rknpu_schedule_trace_record *find_task_dispatch(
+    const struct rknpu_schedule_trace_record *records,
+    size_t count,
+    const struct rknpu_schedule_trace_record *complete
+) {
+    const struct rknpu_schedule_trace_record *found = NULL;
+
+    for (size_t index = 0; index < count; index++) {
+        const struct rknpu_schedule_trace_record *record = &records[index];
+
+        if (record->event_type == RKNPU_SCHEDULE_EVENT_DISPATCH &&
+            record->queue_task == complete->queue_task &&
+            record->task_index == complete->task_index &&
+            record->core_slot == complete->core_slot) {
+            if (found != NULL) {
+                return NULL;
+            }
+            found = record;
+        }
+    }
+    return found;
+}
+
+/* 输出纳秒样本的 Mean/P50/P95/P99，显示单位统一为微秒。 */
+static int print_dispatch_trace_stats(
+    const char *name,
+    uint64_t *samples_ns,
+    size_t count
+) {
+    benchmark_latency_stats_t stats;
+
+    if (benchmark_compute_latency_stats(samples_ns, count, &stats) != 0) {
+        return -1;
+    }
+    printf("  %-31s: %9.3f / %9.3f / %9.3f / %9.3f us (%zu)\n",
+           name, stats.mean_us / 1000.0,
+           (double)stats.p50_us / 1000.0,
+           (double)stats.p95_us / 1000.0,
+           (double)stats.p99_us / 1000.0, count);
+    return 0;
+}
+
+/*
+ * 将 dispatch_execute 拆成硬件执行、唤醒等待和 refill 三部分。
+ *
+ * 最后修改日期：2026-08-19。驱动只保存原始时间和 worker_cycle；这里按
+ * Task 匹配 Dispatch/Complete，再按 cycle 去重统计一轮 Worker 收割的 Core 数。
+ */
+static int report_dispatch_trace(const benchmark_result_t *result) {
+    const struct rknpu_schedule_trace_record *records =
+        result->dispatch_trace_records;
+    size_t count = result->dispatch_trace_count;
+    uint64_t *dispatch_irq_ns = NULL;
+    uint64_t *irq_resume_ns = NULL;
+    uint64_t *resume_dispatch_ns = NULL;
+    size_t dispatch_count = 0;
+    size_t complete_count = 0;
+    size_t enqueue_count = 0;
+    size_t refill_count = 0;
+    size_t wake_count = 0;
+    size_t irq_while_worker_active = 0;
+    uint32_t harvest_histogram[4] = {0};
+    uint64_t last_complete_cycle = UINT64_MAX;
+    uint32_t last_harvested_cores = 0;
+    int status = -1;
+
+    if (!result->dispatch_trace_collected) {
+        return 0;
+    }
+    dispatch_irq_ns = calloc(count, sizeof(*dispatch_irq_ns));
+    irq_resume_ns = calloc(count, sizeof(*irq_resume_ns));
+    resume_dispatch_ns = calloc(count, sizeof(*resume_dispatch_ns));
+    if (dispatch_irq_ns == NULL || irq_resume_ns == NULL ||
+        resume_dispatch_ns == NULL) {
+        goto out;
+    }
+
+    for (size_t index = 0; index < count; index++) {
+        const struct rknpu_schedule_trace_record *record = &records[index];
+
+        if (record->sequence != index || record->timing_reserved != 0U) {
+            fprintf(stderr, "invalid dispatch trace sequence at index=%zu\n", index);
+            goto out;
+        }
+        if (record->event_type == RKNPU_SCHEDULE_EVENT_ENQUEUE) {
+            enqueue_count++;
+            continue;
+        }
+        if (record->event_type == RKNPU_SCHEDULE_EVENT_DISPATCH) {
+            if (record->worker_cycle == 0U) {
+                fprintf(stderr, "dispatch without worker_cycle at index=%zu\n", index);
+                goto out;
+            }
+            dispatch_count++;
+            continue;
+        }
+        if (record->event_type == RKNPU_SCHEDULE_EVENT_COMPLETE) {
+            const struct rknpu_schedule_trace_record *dispatch =
+                find_task_dispatch(records, count, record);
+
+            if (dispatch == NULL || record->irq_timestamp_ns == 0U ||
+                record->worker_resume_ns == 0U || record->worker_cycle == 0U ||
+                record->harvested_cores == 0U ||
+                record->harvested_cores > 3U ||
+                dispatch->timestamp_ns > record->irq_timestamp_ns) {
+                fprintf(stderr, "invalid completion timing at index=%zu\n", index);
+                goto out;
+            }
+
+            dispatch_irq_ns[complete_count] =
+                record->irq_timestamp_ns - dispatch->timestamp_ns;
+            if (record->worker_resume_ns >= record->irq_timestamp_ns) {
+                irq_resume_ns[complete_count] =
+                    record->worker_resume_ns - record->irq_timestamp_ns;
+            } else {
+                /* 该 IRQ 到达时 Worker 已在处理同一批次，不需要再次恢复。 */
+                irq_resume_ns[complete_count] = 0;
+                irq_while_worker_active++;
+            }
+            complete_count++;
+
+            if (record->worker_cycle != last_complete_cycle) {
+                uint64_t next_dispatch_ns = 0;
+
+                last_complete_cycle = record->worker_cycle;
+                last_harvested_cores = record->harvested_cores;
+                wake_count++;
+                harvest_histogram[record->harvested_cores]++;
+                for (size_t next = 0; next < count; next++) {
+                    const struct rknpu_schedule_trace_record *candidate = &records[next];
+
+                    if (candidate->event_type == RKNPU_SCHEDULE_EVENT_DISPATCH &&
+                        candidate->worker_cycle == record->worker_cycle &&
+                        candidate->timestamp_ns >= record->worker_resume_ns &&
+                        (next_dispatch_ns == 0U ||
+                         candidate->timestamp_ns < next_dispatch_ns)) {
+                        next_dispatch_ns = candidate->timestamp_ns;
+                    }
+                }
+                if (next_dispatch_ns != 0U) {
+                    resume_dispatch_ns[refill_count++] =
+                        next_dispatch_ns - record->worker_resume_ns;
+                }
+            } else if (record->harvested_cores != last_harvested_cores) {
+                fprintf(stderr, "inconsistent harvested_cores for worker_cycle=%llu\n",
+                        (unsigned long long)record->worker_cycle);
+                goto out;
+            }
+            continue;
+        }
+
+        fprintf(stderr, "failed or unknown schedule event at index=%zu\n", index);
+        goto out;
+    }
+
+    if (enqueue_count != result->dispatch_trace_submits ||
+        dispatch_count != complete_count || complete_count == 0U || wake_count == 0U) {
+        fprintf(stderr,
+                "dispatch trace count mismatch enqueue=%zu/%u dispatch=%zu complete=%zu wake=%zu\n",
+                enqueue_count, result->dispatch_trace_submits, dispatch_count,
+                complete_count, wake_count);
+        goto out;
+    }
+
+    printf("  Dispatch/IRQ/Worker 诊断窗口（不计入正式性能）\n");
+    printf("  指标顺序                    Mean / P50 / P95 / P99\n");
+    if (print_dispatch_trace_stats(
+            "Dispatch -> IRQ", dispatch_irq_ns, complete_count
+        ) != 0 ||
+        print_dispatch_trace_stats(
+            "IRQ -> Worker resume/observe", irq_resume_ns, complete_count
+        ) != 0 ||
+        (refill_count != 0U &&
+         print_dispatch_trace_stats(
+             "Worker resume/observe -> Next Dispatch",
+             resume_dispatch_ns, refill_count
+         ) != 0)) {
+        goto out;
+    }
+    printf("  wake/harvest cycles          : %zu wake, %zu refill\n",
+           wake_count, refill_count);
+    printf("  一轮 Worker 收割 1/2/3 Core  : %u / %u / %u\n",
+           harvest_histogram[1], harvest_histogram[2], harvest_histogram[3]);
+    printf("  每轮平均收割 Core            : %.2f\n",
+           (double)complete_count / (double)wake_count);
+    printf("  Worker 已运行后到达的 IRQ    : %zu / %zu\n",
+           irq_while_worker_active, complete_count);
+    status = 0;
+
+out:
+    free(dispatch_irq_ns);
+    free(irq_resume_ns);
+    free(resume_dispatch_ns);
+    return status;
 }
 
 static int find_submit_trace_index(
@@ -1464,9 +1805,11 @@ static void free_benchmark_result(benchmark_result_t *result) {
     free(result->submit_samples_us);
     free(result->submit_trace_records);
     free(result->yield_trace_records);
+    free(result->dispatch_trace_records);
     result->submit_samples_us = NULL;
     result->submit_trace_records = NULL;
     result->yield_trace_records = NULL;
+    result->dispatch_trace_records = NULL;
     result->valid = 0;
 }
 
@@ -1479,6 +1822,9 @@ static void print_usage(const char *argv0) {
     printf("  --warmup <count>        Override warmup rounds for every scenario\n");
     printf("  --task-cap <count>      Cap task count for both shared/unique modes\n");
     printf("  --cores <1|3|both>      Select core cases (default: both)\n");
+    printf("  --dispatch-trace        Run a separate Dispatch/IRQ/Worker diagnostic window\n");
+    printf("  --trace-rounds <count>  Diagnostic rounds (default: %u)\n",
+           DEFAULT_DISPATCH_TRACE_ROUNDS);
     printf("  --yield-trace           Collect Worker yield gaps; requires llama_decode_like and --cores 3\n");
     printf("  --yield-capacity <n>    Trace records to preallocate (default: %u, max: %u)\n",
            RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY,
@@ -1521,6 +1867,7 @@ static int parse_cli(int argc, char **argv, cli_options_t *options) {
     options->run_one_core = 1;
     options->run_three_core = 1;
     options->yield_trace_capacity = RKNPU_WORKER_YIELD_TRACE_DEFAULT_CAPACITY;
+    options->dispatch_trace_rounds = DEFAULT_DISPATCH_TRACE_ROUNDS;
 
     for (int index = 1; index < argc; index++) {
         const char *arg = argv[index];
@@ -1541,10 +1888,15 @@ static int parse_cli(int argc, char **argv, cli_options_t *options) {
             options->collect_yield_trace = 1;
             continue;
         }
+        if (strcmp(arg, "--dispatch-trace") == 0) {
+            options->collect_dispatch_trace = 1;
+            continue;
+        }
         if ((strcmp(arg, "--scenario") == 0) ||
             (strcmp(arg, "--rounds") == 0) ||
             (strcmp(arg, "--warmup") == 0) ||
             (strcmp(arg, "--task-cap") == 0) ||
+            (strcmp(arg, "--trace-rounds") == 0) ||
             (strcmp(arg, "--yield-capacity") == 0) ||
             (strcmp(arg, "--cores") == 0)) {
             if (index + 1 >= argc) {
@@ -1573,6 +1925,13 @@ static int parse_cli(int argc, char **argv, cli_options_t *options) {
                     fprintf(stderr, "invalid --task-cap value: %s\n", argv[index]);
                     return -1;
                 }
+            } else if (strcmp(arg, "--trace-rounds") == 0) {
+                if (parse_u32(argv[index], &options->dispatch_trace_rounds) != 0 ||
+                    options->dispatch_trace_rounds == 0U) {
+                    fprintf(stderr, "invalid --trace-rounds value: %s\n", argv[index]);
+                    return -1;
+                }
+                options->has_dispatch_trace_rounds = 1;
             } else if (strcmp(arg, "--yield-capacity") == 0) {
                 if (parse_u32(argv[index], &options->yield_trace_capacity) != 0 ||
                     options->yield_trace_capacity == 0U ||
@@ -1611,6 +1970,11 @@ static int parse_cli(int argc, char **argv, cli_options_t *options) {
 
     if (options->has_yield_trace_capacity && !options->collect_yield_trace) {
         fprintf(stderr, "--yield-capacity requires --yield-trace\n");
+        return -1;
+    }
+
+    if (options->has_dispatch_trace_rounds && !options->collect_dispatch_trace) {
+        fprintf(stderr, "--trace-rounds requires --dispatch-trace\n");
         return -1;
     }
 
@@ -1749,6 +2113,8 @@ static int run_mode_pair(
                 measure_rounds,
                 0,
                 options->yield_trace_capacity,
+                options->collect_dispatch_trace,
+                options->dispatch_trace_rounds,
                 &one_core
             ) != 0) {
             fprintf(stderr, "1-core benchmark failed for scenario=%s mode=%s\n",
@@ -1760,6 +2126,10 @@ static int run_mode_pair(
         printf("  1-core metrics\n");
         print_dma_footprint(&one_core);
         print_case_metrics(&one_core);
+        if (report_dispatch_trace(&one_core) != 0) {
+            free_benchmark_result(&one_core);
+            return -1;
+        }
     }
 
     if (options->run_three_core) {
@@ -1773,6 +2143,8 @@ static int run_mode_pair(
                 measure_rounds,
                 options->collect_yield_trace,
                 options->yield_trace_capacity,
+                options->collect_dispatch_trace,
+                options->dispatch_trace_rounds,
                 &three_core
             ) != 0) {
             fprintf(stderr, "3-core benchmark failed for scenario=%s mode=%s\n",
@@ -1787,6 +2159,13 @@ static int run_mode_pair(
         printf("  3-core metrics\n");
         print_dma_footprint(&three_core);
         print_case_metrics(&three_core);
+        if (report_dispatch_trace(&three_core) != 0) {
+            free_benchmark_result(&three_core);
+            if (one_core.valid) {
+                free_benchmark_result(&one_core);
+            }
+            return -1;
+        }
         if (report_worker_yield_trace(&three_core) != 0) {
             free_benchmark_result(&three_core);
             if (one_core.valid) {
@@ -1848,6 +2227,14 @@ int main(int argc, char **argv) {
            options.collect_yield_trace
                ? "enabled for the 3-core measured window"
                : "disabled");
+    printf("  Dispatch trace  : %s\n",
+           options.collect_dispatch_trace
+               ? "separate diagnostic window enabled"
+               : "disabled");
+    if (options.collect_dispatch_trace) {
+        printf("  trace rounds    : %u per selected core case\n",
+               options.dispatch_trace_rounds);
+    }
     if (options.collect_yield_trace) {
         printf("  trace capacity  : %u records (%.2f MiB per buffer)\n",
                options.yield_trace_capacity,
@@ -1858,7 +2245,18 @@ int main(int argc, char **argv) {
     total_mode_pairs = count_selected_mode_pairs(&options);
     planned_submit_rounds = count_planned_submit_rounds(&options);
     printf("  selected pairs  : %u\n", total_mode_pairs);
-    printf("  planned submits : %u blocking ioctl rounds\n", planned_submit_rounds);
+    printf("  planned formal submits : %u blocking ioctl rounds\n",
+           planned_submit_rounds);
+    if (options.collect_dispatch_trace) {
+        uint64_t diagnostic_submits =
+            (uint64_t)total_mode_pairs *
+            (uint64_t)(options.run_one_core + options.run_three_core) *
+            (uint64_t)options.dispatch_trace_rounds;
+
+        /* 诊断 Submit 单独执行，不计入正式 Mean/P50/P95/P99 和吞吐量。 */
+        printf("  planned diagnostic submits : %llu blocking ioctl rounds\n",
+               (unsigned long long)diagnostic_submits);
+    }
 
     for (size_t scenario_index = 0; scenario_index < sizeof(k_scenarios) / sizeof(k_scenarios[0]); scenario_index++) {
         const benchmark_scenario_t *scenario = &k_scenarios[scenario_index];

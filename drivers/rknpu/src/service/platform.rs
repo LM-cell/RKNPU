@@ -89,10 +89,10 @@ pub trait RknpuSchedulerRuntime: Send + Sync + 'static {
     where
         F: FnOnce() + Send + 'static;
 
-    /// 让出当前 CPU，供 stalled 重试和可选的 completion 轮询方式使用。
+    /// 在调度器 stalled 且没有可等待 IRQ 时让出当前 CPU。
     ///
-    /// 最后修改日期：2026-08-19。Event/Waker 模式只在 stalled 状态调用；
-    /// YieldPolling 对照模式还会在等待 NPU completion 时调用。
+    /// 最后修改日期：2026-08-22。正常 in-flight completion 只通过
+    /// Event/Waker 阻塞等待，不再调用该接口轮询。
     fn yield_now(&self);
 }
 
