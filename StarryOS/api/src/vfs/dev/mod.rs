@@ -1,6 +1,5 @@
 //! Special devices
 
-mod dma_heap;
 #[cfg(feature = "input")]
 mod event;
 mod fb;
@@ -275,22 +274,6 @@ fn builder(fs: Arc<SimpleFs>) -> DirMaker {
     root.add(
         "shm",
         SimpleDir::new_maker(fs.clone(), Arc::new(DirMapping::new())),
-    );
-
-    // DMA heap devices
-    let mut dma_heap_dir = DirMapping::new();
-    dma_heap_dir.add(
-        "system",
-        Device::new(
-            fs.clone(),
-            NodeType::CharacterDevice,
-            dma_heap::DMA_HEAP_SYSTEM_DEVICE_ID,
-            Arc::new(dma_heap::DmaHeapSystem::new()),
-        ),
-    );
-    root.add(
-        "dma_heap",
-        SimpleDir::new_maker(fs.clone(), Arc::new(dma_heap_dir)),
     );
 
     #[cfg(target_arch = "aarch64")]

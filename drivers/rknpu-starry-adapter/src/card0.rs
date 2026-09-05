@@ -59,7 +59,7 @@ impl DeviceOps for Card0 {
         let nr = ioctl_nr(cmd);
         info!("card0: cmd {cmd:#x}, nr {nr:#x}, arg {arg:#x}");
 
-        let is_driver_ioctl = is_driver_ioctl(ioctl_nr(cmd));
+        let is_driver_ioctl = is_driver_ioctl(cmd);
         info!("card0: is_driver_ioctl = {}", is_driver_ioctl);
 
         let mut stack_data = [0u8; 128];

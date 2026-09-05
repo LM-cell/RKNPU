@@ -156,6 +156,8 @@ enum e_rknpu_action {
  * @dma_addr: dma address that access by rknpu.
  * @sram_size: user-desired sram memory allocation size.
  *  - this size value would be page-aligned internally.
+ * @iommu_domain_id: iommu domain id.
+ * @core_mask: core mask associated with the allocation.
  */
 struct rknpu_mem_create {
         __u32 handle;
@@ -164,6 +166,8 @@ struct rknpu_mem_create {
         __u64 obj_addr;
         __u64 dma_addr;
         __u64 sram_size;
+        __s32 iommu_domain_id;
+        __u32 core_mask;
 };
 
 /**

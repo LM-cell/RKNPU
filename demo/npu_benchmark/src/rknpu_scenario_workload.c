@@ -24,22 +24,7 @@
 #define DMA_SLICE_ALIGN 64U
 #define SUBMIT_TIMEOUT_MS 6000U
 
-/* StarryOS MEM_CREATE 使用的 48 字节兼容结构。 */
-struct rknpu_mem_create_starry {
-    uint32_t handle;
-    uint32_t flags;
-    uint64_t size;
-    uint64_t obj_addr;
-    uint64_t dma_addr;
-    uint64_t sram_size;
-    int32_t iommu_domain_id;
-    uint32_t core_mask;
-};
-
-#define DRM_IOCTL_RKNPU_MEM_CREATE_STARRY                                    \
-    DRM_IOWR(DRM_COMMAND_BASE + RKNPU_MEM_CREATE, struct rknpu_mem_create_starry)
-
-_Static_assert(sizeof(struct rknpu_mem_create_starry) == 48,
+_Static_assert(sizeof(struct rknpu_mem_create) == 48,
                "StarryOS MEM_CREATE ABI must be 48 bytes");
 
 typedef struct {
@@ -132,7 +117,7 @@ static int allocate_dma_buffer(
     uint32_t core_mask,
     dma_buffer_t *buffer
 ) {
-    struct rknpu_mem_create_starry create;
+    struct rknpu_mem_create create;
     struct rknpu_mem_map map;
 
     memset(buffer, 0, sizeof(*buffer));
@@ -143,7 +128,7 @@ static int allocate_dma_buffer(
     create.size = size;
     create.core_mask = core_mask;
 
-    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_CREATE_STARRY, &create) < 0) {
+    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_CREATE, &create) < 0) {
         fprintf(stderr, "RKNPU_MEM_CREATE failed: errno=%d (%s)\n",
                 errno, strerror(errno));
         return -1;

@@ -22,6 +22,19 @@ static int run_action(int fd, uint32_t flag, uint32_t *value) {
   return ret;
 }
 
+static int run_raw_action(int fd, uint32_t flag, uint32_t *value) {
+  struct rknpu_action act = {
+      .flags = flag,
+      .value = value ? *value : 0,
+  };
+
+  int ret = ioctl(fd, IOCTL_RKNPU_ACTION, &act);
+  if (ret == 0 && value) {
+    *value = act.value;
+  }
+  return ret;
+}
+
 static bool expect_action_ok(int fd, uint32_t flag, uint32_t *value,
                              const char *name) {
   if (run_action(fd, flag, value) < 0) {
@@ -58,6 +71,20 @@ int main(void) {
 
   value = 0;
   ok &= expect_action_ok(fd, RKNPU_GET_HW_VERSION, &value, "GET_HW_VERSION");
+
+  value = 0;
+  if (run_raw_action(fd, RKNPU_GET_HW_VERSION, &value) < 0) {
+    printf("FAIL %-24s errno=%d (%s)\n", "GET_HW_VERSION_RAW", errno,
+           strerror(errno));
+    ok = false;
+  } else if (value != 0x46495245U) {
+    printf("FAIL %-24s value=%u (0x%x)\n", "GET_HW_VERSION_RAW", value,
+           value);
+    ok = false;
+  } else {
+    printf("PASS %-24s value=%u (0x%x)\n", "GET_HW_VERSION_RAW", value,
+           value);
+  }
 
   value = 0;
   ok &= expect_action_ok(fd, RKNPU_GET_DRV_VERSION, &value, "GET_DRV_VERSION");

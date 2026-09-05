@@ -200,7 +200,7 @@ impl RknpuSchedulerRuntime for StarryPlatform {
     /// 最后修改日期：2026-08-22。
     fn yield_now(&self) {
         #[cfg(target_arch = "aarch64")]
-        axtask::yield_now();
+        axtask::yield_now();//取得当前 CPU 的运行队列，然后调用 yield_current()
         #[cfg(not(target_arch = "aarch64"))]
         {}
     }
@@ -289,7 +289,7 @@ impl DeviceOps for Card1 {
         let nr = ioctl_nr(cmd);
         info!("card1: cmd {cmd:#x}, nr {nr:#x}, arg {arg:#x}");
 
-        let is_driver_ioctl = is_driver_ioctl(ioctl_nr(cmd));
+        let is_driver_ioctl = is_driver_ioctl(cmd);
         info!("card1: is_driver_ioctl = {}", is_driver_ioctl);
 
         if is_driver_ioctl {

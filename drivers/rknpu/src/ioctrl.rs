@@ -111,7 +111,7 @@ pub struct RknpuMemCreate {
     pub sram_size: u64,
     /// IOMMU domain used for isolation.
     pub iommu_domain_id: i32,
-    /// Reserved or advisory core-mask field.
+    /// Core mask associated with the allocation.
     pub core_mask: u32,
 }
 
@@ -480,6 +480,11 @@ mod tests {
     use core::ptr::NonNull;
 
     const FAKE_MMIO_LEN: usize = 0x10000;
+
+    #[test]
+    fn mem_create_abi_size_is_stable() {
+        assert_eq!(core::mem::size_of::<super::RknpuMemCreate>(), 48);
+    }
 
     #[test]
     fn submit_trace_abi_size_is_stable() {

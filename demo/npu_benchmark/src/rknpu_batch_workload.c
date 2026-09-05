@@ -1,4 +1,4 @@
-/* 10 Task 矩阵乘法测试负载实现，最后修改日期：2026-08-07。 */
+/* 10 Task 矩阵乘法测试负载实现，最后修改日期：2026-08-11。 */
 
 #include "rknpu_batch_workload.h"
 
@@ -22,35 +22,6 @@
 #define INPUT_LAYOUT_C2 8
 #define OUTPUT_LAYOUT_C2 4
 #define SUBMIT_TIMEOUT_MS 6000U
-
-/*
- * StarryOS 的 MEM_CREATE 为 48 字节，比 demo 原上游结构多 iommu_domain_id
- * 和 core_mask。局部兼容结构保证 ioctl copy-out 不会越过用户对象末尾。
- */
-struct rknpu_mem_create_starry {
-    /* 驱动返回的 GEM handle。 */
-    uint32_t handle;
-    /* 缓存和映射属性。 */
-    uint32_t flags;
-    /* 用户请求的分配字节数。 */
-    uint64_t size;
-    /* 驱动返回的 CPU 对象地址。 */
-    uint64_t obj_addr;
-    /* 驱动返回的 NPU DMA 地址。 */
-    uint64_t dma_addr;
-    /* 驱动实际分配的字节数。 */
-    uint64_t sram_size;
-    /* 当前测试保持默认 0，不切换 IOMMU domain。 */
-    int32_t iommu_domain_id;
-    /* 告知驱动该缓冲区对应的实验核心掩码。 */
-    uint32_t core_mask;
-};
-
-#define DRM_IOCTL_RKNPU_MEM_CREATE_STARRY                                    \
-    DRM_IOWR(DRM_COMMAND_BASE + RKNPU_MEM_CREATE, struct rknpu_mem_create_starry)
-
-_Static_assert(sizeof(struct rknpu_mem_create_starry) == 48,
-               "StarryOS MEM_CREATE ABI must be 48 bytes");
 
 typedef struct {
     /* 用户态 mmap 地址；MAP_FAILED 表示映射没有建立。 */
@@ -98,7 +69,7 @@ static int allocate_dma_buffer(
     uint32_t core_mask,
     dma_buffer_t *buffer
 ) {
-    struct rknpu_mem_create_starry create;
+    struct rknpu_mem_create create;
     struct rknpu_mem_map map;
 
     memset(buffer, 0, sizeof(*buffer));
@@ -109,7 +80,7 @@ static int allocate_dma_buffer(
     create.size = size;
     create.core_mask = core_mask;
 
-    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_CREATE_STARRY, &create) < 0) {
+    if (ioctl(fd, DRM_IOCTL_RKNPU_MEM_CREATE, &create) < 0) {
         fprintf(stderr, "RKNPU_MEM_CREATE failed: errno=%d (%s)\n",
                 errno, strerror(errno));
         return -1;
@@ -192,22 +163,26 @@ static void prepare_operands(rknpu_batch_workload_t *workload) {
 }
 
 /*
- * 把固定 10 Task 分配到逻辑 lane：1 核为 10，2 核为 5+5，3 核为 4+3+3。
- * lane 只描述 Submit 内连续 Task 范围；实际物理核心仍由驱动结合 core_mask
- * 选择，测试通过调度 trace 检查最终 core_slot。
+ * 按当前核心数把 Task 均匀分配到逻辑 lane，余数优先分给前面的 lane。
+ * lane 记录 Submit 内连续的 Task 范围，物理核心仍由驱动结合 core_mask 选择。
  */
-static void configure_lanes(struct rknpu_submit *submit, uint32_t npu_cores) {
-    static const uint32_t lane_counts[3][3] = {
-        {10U, 0U, 0U},
-        {5U, 5U, 0U},
-        {4U, 3U, 3U},
-    };
+static void configure_lanes(
+    struct rknpu_submit *submit,
+    uint32_t task_count,
+    uint32_t npu_cores
+) {
+    uint32_t used_lanes = npu_cores < task_count ? npu_cores : task_count;
     uint32_t task_start = 0;
 
-    for (uint32_t lane = 0; lane < npu_cores; lane++) {
+    for (uint32_t lane = 0; lane < used_lanes; lane++) {
+        uint32_t remaining_tasks = task_count - task_start;
+        uint32_t remaining_lanes = used_lanes - lane;
+        uint32_t lane_tasks =
+            (remaining_tasks + remaining_lanes - 1U) / remaining_lanes;
+
         submit->subcore_task[lane].task_start = task_start;
-        submit->subcore_task[lane].task_number = lane_counts[npu_cores - 1U][lane];
-        task_start += lane_counts[npu_cores - 1U][lane];
+        submit->subcore_task[lane].task_number = lane_tasks;
+        task_start += lane_tasks;
     }
 }
 
@@ -259,31 +234,14 @@ static int prepare_tasks(
             workload->regcmd.dma_addr + task_index * REGCMD_BYTES;
     }
 
-    workload->submit.flags =
-        RKNPU_JOB_PC | RKNPU_JOB_BLOCK | RKNPU_JOB_PINGPONG;
-    
+    workload->submit.flags = RKNPU_JOB_PC | RKNPU_JOB_BLOCK | RKNPU_JOB_PINGPONG;
     workload->submit.timeout = SUBMIT_TIMEOUT_MS;
-    
-    workload->submit.task_start = 0;
     workload->submit.task_number = RKNPU_BATCH_TASKS;
-    workload->submit.task_counter = 0;
-    
-    /*
-     * 当前 StarryOS queue-driven RKNPU 路径通过 task_obj_addr
-     * 获取用户态 Task 对象并构造 shadow task。
-     *
-     * 与现有可工作的多 Task benchmark 保持一致，
-     * task_base_addr 必须保持为 0。
-     */
     workload->submit.task_obj_addr = workload->tasks.obj_addr;
-    workload->submit.regcfg_obj_addr = 0;
-    workload->submit.task_base_addr = 0;
-    
-    workload->submit.user_data = 0;
+    workload->submit.task_base_addr = workload->tasks.dma_addr;
     workload->submit.core_mask = core_mask;
     workload->submit.fence_fd = -1;
-    
-    configure_lanes(&workload->submit, npu_cores);
+    configure_lanes(&workload->submit, RKNPU_BATCH_TASKS, npu_cores);
     return 0;
 }
 
